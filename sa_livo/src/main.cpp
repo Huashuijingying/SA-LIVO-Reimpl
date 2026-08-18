@@ -1,3 +1,9 @@
+/*
+Modified for ROS 2; immediate source: integralrobotics/FAST-LIVO2 commit
+d4ad051 (2025-04-09).
+The inherited code is subject to the repository's GPL-2.0-only LICENSE.
+*/
+
 #include "LIVMapper.h"
 
 int main(int argc, char **argv)

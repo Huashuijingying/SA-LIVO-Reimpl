@@ -98,8 +98,17 @@ sensor failure.
 
 ## License
 
-This package is derived from the FAST-LIVO2 ROS2 code base (GPLv2) and is
-released under GPLv2-compatible terms. Respect the rights of the SA-LIVO
-paper authors and the licenses of the benchmark datasets (HILTI'22, New
-College, Oxford Spires; New College / Oxford Spires are CC BY-NC-SA 4.0).
-This is a research reproduction, not the authors' official implementation.
+This package includes and modifies the
+[integralrobotics FAST-LIVO2 ROS2 port](https://github.com/integralrobotics/FAST-LIVO2)
+of the official FAST-LIVO2 code and is released as GPL-2.0-only to preserve
+that upstream license. External dependencies retain their own licenses.
+
+The currently used ROS2 `rpg_vikit` declares GPLv3, creating an unresolved
+compatibility issue for redistribution of a combined GPL-2.0-only binary.
+Apache-2.0 ROS 2/OpenCV components also require distribution-specific review.
+This repository distributes source only. See [`../NOTICE.md`](../NOTICE.md)
+for the direct dependency inventory and binary distribution warning.
+
+Respect the rights of the SA-LIVO paper authors and the licenses of the
+benchmark datasets. This is a research reproduction, not the authors'
+official implementation.

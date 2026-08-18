@@ -1,3 +1,5 @@
+# Modified for ROS 2; immediate source: integralrobotics/FAST-LIVO2 commit
+# d4ad051 (2025-04-09).
 Panels:
   - Class: rviz_common/Displays
     Help Height: 0

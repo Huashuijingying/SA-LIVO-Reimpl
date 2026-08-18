@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-only
+//
 // saif_test.cpp — unit test for the SAIF fusion module (Algorithm 1 of the
 // SA-LIVO paper). Verifies:
 //   1. Fused matrix is PSD by construction

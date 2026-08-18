@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  * sa_vio.cpp — LiDAR-anchored direct photometric VIO in information form.
  * See sa_vio.h for the design and conventions.
  */

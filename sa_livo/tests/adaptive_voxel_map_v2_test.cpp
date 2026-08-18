@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
 #include "adaptive_voxel_map_v2.h"
 
 #include <cassert>

@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  * saif.h — Subspace-Aware Information Fusion (SAIF)
  *
  * SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware

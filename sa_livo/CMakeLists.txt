@@ -1,3 +1,6 @@
+# Modified for ROS 2; immediate source: integralrobotics/FAST-LIVO2 commit
+# d4ad051 (2025-04-09).
+# Further modified for this SA-LIVO reproduction by Huashuijingying, 2026-08.
 cmake_minimum_required(VERSION 3.10)
 project(sa_livo)
 

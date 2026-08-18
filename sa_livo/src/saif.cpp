@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  * saif.cpp — Subspace-Aware Information Fusion (SAIF) implementation.
  * See saif.h for the algorithm description and conventions.
  */

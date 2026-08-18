@@ -121,12 +121,39 @@ Per-sequence best configurations and parameters are in
 
 ## License
 
-This repository is a non-official reproduction derived from the FAST-LIVO2
-ROS2 code base and is therefore released under the
-[GPLv2](LICENSE) license of the original project. Respect the rights of the
-SA-LIVO paper authors and the licenses of the benchmark datasets (HILTI'22,
-New College, Oxford Spires; New College / Oxford Spires data are
-CC BY-NC-SA 4.0). See [NOTICE](NOTICE.md) for provenance details.
+This repository is a non-official reproduction derived from the
+[integralrobotics FAST-LIVO2 ROS2 port](https://github.com/integralrobotics/FAST-LIVO2)
+of the [official FAST-LIVO2](https://github.com/hku-mars/FAST-LIVO2) code.
+Because it includes and modifies FAST-LIVO2 source released under GNU GPL
+version 2 without an "or later" grant, this repository uses
+[GPL-2.0-only](LICENSE). This choice preserves the upstream license; it does
+not relicense external dependencies.
+
+Direct dependency licenses identified by the current audit:
+
+| Dependency group | Declared license |
+|---|---|
+| FAST-LIVO2 base code | GPL-2.0-only |
+| WilsonGuo ROS2 `rpg_vikit` (`vikit_common`, `vikit_ros`) | GPLv3 |
+| `livox_ros_driver2`, Sophus, optional mimalloc | MIT; driver third-party notices also apply |
+| ROS 2 core/launch/messages/rosbag2 | Primarily Apache-2.0 |
+| ROS 2 TF/PCL/image/vision/RViz packages | BSD variants and/or Apache-2.0 |
+| OpenCV | Apache-2.0 for 4.5.0+; BSD-3-Clause for earlier releases |
+| Eigen, PCL, Boost | MPL-2.0 (primarily), BSD-3-Clause, BSL-1.0 |
+| OpenMP runtime | Toolchain-specific; GCC runtime exception applies to `libgomp` |
+
+**Binary distribution warning:** the current ROS2 `rpg_vikit` declares GPLv3,
+which is incompatible with GPL-2.0-only for a redistributed combined work.
+Apache-2.0 ROS 2 components and OpenCV 4.5+ also require case-specific review
+before binary distribution. This repository contains source only; do not
+redistribute compiled binaries or containers combining the affected
+dependencies until compatible replacements, permissions, or qualified legal
+review resolve these issues.
+
+Respect the rights of the SA-LIVO paper authors and the benchmark dataset
+licenses (New College / Oxford Spires data are CC BY-NC-SA 4.0). See
+[NOTICE](NOTICE.md) for the provenance, dependency inventory, source links,
+and audit scope.
 
 ## Project structure
 

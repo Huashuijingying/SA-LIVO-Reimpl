@@ -8,6 +8,10 @@ Prof. Fu Zhang at <fuzhang@hku.hk>.
 
 This file is subject to the terms and conditions outlined in the 'LICENSE' file,
 which is included as part of this source code package.
+
+Modified for ROS 2; immediate source: integralrobotics/FAST-LIVO2 commit
+d4ad051 (2025-04-09).
+Further modified for this SA-LIVO reproduction by Huashuijingying, 2026-08.
 */
 
 #ifndef LIV_MAPPER_H

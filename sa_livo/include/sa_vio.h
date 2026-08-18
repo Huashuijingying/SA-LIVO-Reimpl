@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  * sa_vio.h — LiDAR-anchored direct photometric VIO in information form
  *
  * SA-LIVO (arXiv:2606.25699) Sect. VI: the visual module assembles the

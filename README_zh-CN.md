@@ -84,9 +84,34 @@ SE(3) Umeyama 对齐、平移 APE）；NCD/Spires 为刚性 SE(3) Umeyama 平移
 
 ## 许可
 
-本仓库派生自 FAST-LIVO2 ROS2 代码库，按原项目的
-[GPLv2](LICENSE) 许可发布。请尊重 SA-LIVO 论文作者权益以及基准数据集
-许可（New College / Oxford Spires 为 CC BY-NC-SA 4.0）。来源与致谢详见
+本仓库包含并修改了 [integralrobotics 的 FAST-LIVO2 ROS2
+适配版](https://github.com/integralrobotics/FAST-LIVO2)及其上游
+[FAST-LIVO2 官方代码](https://github.com/hku-mars/FAST-LIVO2)。上游仓库提供
+GNU GPL version 2 许可文本，但未授予“or later”选项，因此本仓库采用
+[GPL-2.0-only](LICENSE)，以遵守 FAST-LIVO2 的上游许可；这一选择不会改变
+外部依赖各自的许可证。
+
+当前审计识别出的直接依赖许可证如下：
+
+| 依赖组 | 声明的许可证 |
+|---|---|
+| FAST-LIVO2 基础代码 | GPL-2.0-only |
+| WilsonGuo ROS2 `rpg_vikit`（`vikit_common`、`vikit_ros`） | GPLv3 |
+| `livox_ros_driver2`、Sophus、可选 mimalloc | MIT；驱动内第三方声明仍适用 |
+| ROS 2 核心、launch、消息与 rosbag2 | 主要为 Apache-2.0 |
+| ROS 2 TF、PCL、图像、视觉桥接与 RViz 组件 | BSD 变体和/或 Apache-2.0 |
+| OpenCV | 4.5.0 及以后为 Apache-2.0；更早版本为 BSD-3-Clause |
+| Eigen、PCL、Boost | 主要为 MPL-2.0、BSD-3-Clause、BSL-1.0 |
+| OpenMP 运行时 | 取决于工具链；GCC `libgomp` 带 GCC Runtime Library Exception |
+
+**二进制分发警告：**当前 ROS2 `rpg_vikit` 声明为 GPLv3，与
+GPL-2.0-only 代码组合后再分发时存在不兼容。采用 Apache-2.0 的 ROS 2
+组件和 OpenCV 4.5+ 在二进制分发前也需要结合具体打包与链接方式审查。
+本仓库目前仅发布源码；在通过兼容替代、额外授权或合格法律审查解决前，
+请勿分发组合上述依赖后编译出的可执行文件、二进制包或容器镜像。
+
+请尊重 SA-LIVO 论文作者权益以及基准数据集许可（New College / Oxford
+Spires 为 CC BY-NC-SA 4.0）。完整来源、依赖链接、兼容性状态与审计范围见
 [NOTICE](NOTICE.md)。
 
 ## 目录结构

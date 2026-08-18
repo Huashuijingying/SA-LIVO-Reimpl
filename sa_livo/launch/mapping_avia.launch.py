@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 # -- coding: utf-8 --**
+# Modified for ROS 2; immediate source: integralrobotics/FAST-LIVO2 commit
+# d4ad051 (2025-04-09).
+# Further modified for this SA-LIVO reproduction by Huashuijingying, 2026-08.
 
 import os
 from launch import LaunchDescription
