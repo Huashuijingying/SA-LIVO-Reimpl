@@ -49,14 +49,22 @@ IEEE T-RO 2026）论文理论模块（Sect. IV–VII）的独立复现，并在�
 
 ```bash
 # ROS2 Humble；必须 OpenCV 4（OpenCV 5 会使节点崩溃）
-cd fast_livo_ws
+# 使用任意 colcon 工作区；将本仓库放在工作区的 src/ 目录下。
+mkdir -p ~/sa_livo_ws/src
+cd ~/sa_livo_ws/src
+git clone https://github.com/Huashuijingying/SA-LIVO-Reimpl.git
+# 同时把 livox_ros_driver2 和 rpg_vikit 放到这个 src/，或先 source
+# 提供它们的 underlay。
+cd ~/sa_livo_ws
 source /opt/ros/humble/setup.bash
 colcon build --packages-select sa_livo --symlink-install \
   --cmake-args -DCMAKE_BUILD_TYPE=Release \
   -DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
 ```
 
-依赖：`livox_ros_driver2`、`rpg_vikit`（见工作区 `fast_livo_ws/src`）。
+依赖：[`livox_ros_driver2`](https://github.com/Livox-SDK/livox_ros_driver2)、
+[`rpg_vikit`（ROS 2 适配版）](https://github.com/WilsonGuo/Fast-LIVO2-Drvier-ROS2/tree/main/rpg_vikit)；
+可放在同一工作区的 `src/` 下，也可由已 source 的 underlay 提供。
 
 ## 运行与评估
 

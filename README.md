@@ -77,15 +77,23 @@ The code base this reproduction is derived from:
 
 ```bash
 # ROS2 Humble; OpenCV 4 is required (OpenCV 5 crashes the node)
-cd fast_livo_ws
+# Use any colcon workspace; place this repository under its src/ directory.
+mkdir -p ~/sa_livo_ws/src
+cd ~/sa_livo_ws/src
+git clone https://github.com/Huashuijingying/SA-LIVO-Reimpl.git
+# Also place livox_ros_driver2 and rpg_vikit in this src/, or source an underlay
+# that provides them.
+cd ~/sa_livo_ws
 source /opt/ros/humble/setup.bash
 colcon build --packages-select sa_livo --symlink-install \
   --cmake-args -DCMAKE_BUILD_TYPE=Release \
   -DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
 ```
 
-Workspace dependencies: `livox_ros_driver2`, `rpg_vikit` (see
-`fast_livo_ws/src`).
+Workspace dependencies: [`livox_ros_driver2`](https://github.com/Livox-SDK/livox_ros_driver2),
+[`rpg_vikit` (ROS 2 port)](https://github.com/WilsonGuo/Fast-LIVO2-Drvier-ROS2/tree/main/rpg_vikit);
+make them available from the same workspace `src/` directory or from a sourced
+underlay.
 
 ## Run & evaluate
 
