@@ -1,0 +1,141 @@
+/**:
+  ros__parameters:
+    common:
+      img_topic: "/alphasense/cam0/image_raw"
+      lid_topic: "/hesai/pandar"
+      imu_topic: "/alphasense/imu"
+      img_en: 1
+      lidar_en: 1
+      ros_driver_bug_fix: false
+      img_compressed_en: false
+
+    extrin_calib:
+      # HILTI'22 Phasma25: T_imu_lidar (lidar pose in IMU frame)
+      extrinsic_T: [-0.001, -0.00855, 0.055]
+      extrinsic_R: [0.0, -1.0, 0.0,
+                    -1.0, 0.0, 0.0,
+                    0.0, 0.0, -1.0]
+      # T_cam0_lidar = T_cam0_imu ∘ T_imu_lidar
+      # (matches official FAST-LIVO2 HILTI22.yaml; code expects p_C = Rcl·p_L + Pcl)
+      Rcl: [-0.999926, -0.006708, 0.010107,
+            -0.010091, -0.002426, -0.999946,
+            0.006732, -0.999975, 0.002358]
+      Pcl: [-0.054976, 0.067540, -0.052060]
+
+    time_offset:
+      imu_time_offset: 0.0
+      img_time_offset: 0.0
+      exposure_time_init: 0.0
+
+    preprocess:
+      point_filter_num: 1
+      filter_size_surf: 0.2          # paper: 0.2 m downsample leaf for HILTI'22
+      lidar_type: 5                  # XT32 (Hesai PandarXT-32)
+      scan_line: 32
+      blind: 0.8
+
+    vio:
+      max_iterations: 5
+      outlier_threshold: 1000
+      img_point_cov: 100
+      patch_size: 8
+      patch_pyrimid_level: 4
+      normal_en: true
+      raycast_en: false
+      inverse_composition_en: false
+      exposure_estimate_en: true
+      inv_expo_cov: 0.1
+
+    imu:
+      imu_en: true
+      imu_int_frame: 30
+      acc_cov: 0.5
+      gyr_cov: 0.01          # official FAST-LIVO2 HILTI22.yaml (gyro noise)
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+
+    lio:
+      max_iterations: 5
+      dept_err: 0.02
+      beam_err: 0.05
+      min_eigen_value: 0.0025
+      voxel_size: 0.5               # paper: 0.5 m map voxel for HILTI'22
+      max_layer: 2
+      max_points_num: 50
+      layer_init_num: [5, 5, 5, 5, 5]
+      adaptive_support_en: false     # paper Fig.4 hierarchical shell search (SA path)
+      n_pca: 25
+      planarity_ratio_th: 0.05
+      min_eigen_abs: 0.01
+      freeze_min_points: 50
+      chi2_thres: 25.0
+      multi_scale_en: true
+      scale1_radius: 2.0
+      max_shell: 6
+
+    saif:
+      sigma_min: 1.0
+      eps_pose_inflate: 0.01
+      conv_phi_deg: 0.01
+      conv_p_cm: 0.015
+      # Association: FAST-LIVO2 single-voxel + near-voxel fallback (proven
+      # 7/7 non-degenerate near/meet paper). SA scale-1 shell aggregation is a
+      # negative gain (mixes walls in narrow scenes) and is disabled here.
+      baseline_lio_association_en: true
+
+    sa_vio:
+      window_size: 5
+      patch_spacing: 8
+      max_obs_per_frame: 100
+      min_obs: 30
+      depth_min: 0.5
+      theta_max_deg: 80.0
+      parallax_min_px: 0.5
+      abs_res_max: 15.0
+      chi2_thres: 6.635
+      delta_rms: 12.0
+      sigma_rms: 8.0
+      rho_min: 0.3
+      rho_max: 0.7
+      delta_alpha: 0.2
+      sigma_px: 1.0
+      photometric_huber_en: false
+      info_scale: 1.0
+      rrms_after_gates: true
+      point_image_cell_px: 16.0
+      point_select_image_grid: false
+      dual_event_en: false
+      use_baseline_vio_frontend: false
+      baseline_vio_sequential: false
+      baseline_lio_state_estimation: false
+      seq_output_post_vio: false
+      dup_R_deg: 0.5
+      dup_t_m: 0.05
+
+    local_map:
+      map_sliding_en: false
+      half_map_size: 100
+      sliding_thresh: 8.0
+
+    uav:
+      imu_rate_odom: false
+      gravity_align_en: false
+
+    publish:
+      dense_map_en: true
+      pub_effect_point_en: false
+      pub_plane_en: false
+      pub_scan_num: 1
+
+    evo:
+      seq_name: "hilti"
+      pose_output_en: false
+
+    pcd_save:
+      pcd_save_en: false
+      colmap_output_en: false
+      filter_size_pcd: 0.1
+      interval: -1
+      color_delay_frames: -1
+      color_prev_mix: 0.0
+      color_blur_sigma: 0.0

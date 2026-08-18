@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this reproduction in research, please cite the SA-LIVO paper and link this repository."
+title: "SA-LIVO (ROS2) - non-official reproduction"
+abstract: "Independent reproduction of SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware Degeneracy Handling, built on the FAST-LIVO2 ROS2 code base."
+keywords:
+  - SLAM
+  - LiDAR-inertial-visual odometry
+  - degeneracy handling
+  - InEKF
+license: GPL-2.0
+preferred-citation:
+  type: article
+  title: "SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware Degeneracy Handling"
+  authors:
+    - family-names: Cao
+      given-names: Yinong
+    - family-names: He
+      given-names: Xin
+    - family-names: Chen
+      given-names: Yuwei
+    - family-names: Liu
+      given-names: Shijie
+    - family-names: Li
+      given-names: Chunlai
+    - family-names: Wang
+      given-names: Jianyu
+  journal: "IEEE Transactions on Robotics"
+  year: 2026
+  notes: "arXiv:2606.25699"

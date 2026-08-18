@@ -1,0 +1,138 @@
+/**:
+  ros__parameters:
+    common:
+      img_topic: "/alphasense_driver_ros/cam0/debayered/image/compressed"
+      lid_topic: "/hesai/pandar"
+      imu_topic: "/alphasense_driver_ros/imu"
+      img_en: 1
+      lidar_en: 1
+      ros_driver_bug_fix: false
+      img_compressed_en: true
+      img_rate_hz: 10.0          # paper: image streams subsampled to 10 Hz
+
+    extrin_calib:
+      # Oxford Spires default calibration (cam-lidar: 2024-03-19, cam-imu: 2024-06-29)
+      # T_imu_lidar derived from T_cam_imu^-1 * T_cam_lidar
+      extrinsic_T: [-0.00065171, -0.01551034, 0.08463266]
+      extrinsic_R: [-0.01663805, -0.99986011, 0.00171598,
+                    0.99985526, -0.01663181, 0.00358431,
+                    -0.00355527, 0.00177537, 0.9999921]
+      # T_cam0_lidar
+      Rcl: [0.00976944, 0.999946, 0.00354274,
+            0.0076712, 0.00346786, -0.99996456,
+            -0.99992285, 0.00979627, -0.0076369]
+      Pcl: [0.00035061, -0.07957405, -0.05382606]
+
+    time_offset:
+      imu_time_offset: 0.0
+      img_time_offset: 0.0
+      exposure_time_init: 0.0
+
+    preprocess:
+      point_filter_num: 1
+      filter_size_surf: 0.5          # paper: 0.5 m downsample leaf (non-HILTI)
+      lidar_type: 5                  # Hesai XT32 layout (x,y,z,intensity,timestamp,ring); QT64 uses same layout
+      scan_line: 64
+      blind: 0.8
+
+    vio:
+      max_iterations: 5
+      outlier_threshold: 1000
+      img_point_cov: 100
+      patch_size: 8
+      patch_pyrimid_level: 4
+      normal_en: true
+      raycast_en: false
+      inverse_composition_en: false
+      exposure_estimate_en: true
+      inv_expo_cov: 0.1
+
+    imu:
+      imu_en: true
+      imu_int_frame: 30
+      acc_cov: 0.5
+      gyr_cov: 0.3
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+
+    lio:
+      max_iterations: 5
+      dept_err: 0.02
+      beam_err: 0.05
+      min_eigen_value: 0.0025
+      voxel_size: 1.0                # paper: 1.0 m map voxel (non-HILTI)
+      max_layer: 2
+      max_points_num: 50
+      layer_init_num: [5, 5, 5, 5, 5]
+      adaptive_support_en: false     # paper Fig.4 hierarchical shell search (SA path)
+      n_pca: 25
+      planarity_ratio_th: 0.05
+      min_eigen_abs: 0.01
+      freeze_min_points: 50
+      chi2_thres: 25.0               # paper: same τL as HILTI (fixed across sequences)
+      multi_scale_en: true
+      scale1_radius: 2.0
+      max_shell: 6
+
+    saif:
+      sigma_min: 1.0
+      eps_pose_inflate: 0.01
+      conv_phi_deg: 0.01
+      conv_p_cm: 0.015
+
+    sa_vio:
+      window_size: 5
+      patch_spacing: 8
+      max_obs_per_frame: 100
+      min_obs: 30
+      depth_min: 0.5
+      theta_max_deg: 80.0
+      parallax_min_px: 0.5
+      abs_res_max: 15.0
+      chi2_thres: 6.635              # paper τV
+      delta_rms: 12.0
+      sigma_rms: 8.0
+      rho_min: 0.3
+      rho_max: 0.7
+      delta_alpha: 0.2
+      sigma_px: 1.0
+      photometric_huber_en: false
+      info_scale: 1.0
+      rrms_after_gates: true
+      point_image_cell_px: 16.0
+      point_select_image_grid: false
+      dual_event_en: false
+      use_baseline_vio_frontend: false
+      baseline_vio_sequential: false
+      baseline_lio_state_estimation: false
+      seq_output_post_vio: false
+      dup_R_deg: 0.5
+      dup_t_m: 0.05
+
+    local_map:
+      map_sliding_en: false
+      half_map_size: 100
+      sliding_thresh: 8.0
+
+    uav:
+      imu_rate_odom: false
+      gravity_align_en: false
+
+    publish:
+      dense_map_en: true
+      pub_effect_point_en: false
+      pub_plane_en: false
+      pub_scan_num: 1
+
+    evo:
+      seq_name: "spires"
+      pose_output_en: false
+
+    pcd_save:
+      pcd_save_en: false
+      colmap_output_en: false
+      filter_size_pcd: 0.1
+      interval: -1
+      color_delay_frames: -1
+      color_prev_mix: 0.0
+      color_blur_sigma: 0.0

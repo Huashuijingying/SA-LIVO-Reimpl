@@ -1,0 +1,138 @@
+/**:
+  ros__parameters:
+    common:
+      img_topic: "/left_camera/image"
+      lid_topic: "/livox/lidar"
+      imu_topic: "/livox/imu"
+      img_en: 1
+      lidar_en: 1
+      ros_driver_bug_fix: false
+
+    extrin_calib:
+      extrinsic_T: [0.04165, 0.02326, -0.0284]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+      Rcl: [0.00610193, -0.999863, -0.0154172,
+            -0.00615449, 0.0153796, -0.999863,
+            0.999962, 0.00619598, -0.0060598]
+      Pcl: [0.0194384, 0.104689, -0.0251952]
+
+    time_offset: 
+      imu_time_offset: 0.0
+      img_time_offset: 0.0
+      exposure_time_init: 0.0
+
+    preprocess:
+      point_filter_num: 1
+      filter_size_surf: 0.1
+      lidar_type: 1 # Livox Avia LiDAR
+      scan_line: 6
+      blind: 0.8
+
+    vio:
+      max_iterations: 5
+      outlier_threshold: 1000 # 78 100 156 #100 200 500 700 infinite
+      img_point_cov: 100 # 100 1000 
+      patch_size: 8
+      patch_pyrimid_level: 4
+      normal_en: true
+      raycast_en: false
+      inverse_composition_en: false
+      exposure_estimate_en: true
+      inv_expo_cov: 0.1
+
+    imu:
+      imu_en: true
+      imu_int_frame: 30
+      acc_cov: 0.5 # 0.2
+      gyr_cov: 0.3 # 0.5
+      b_acc_cov: 0.0001 # 0.1
+      b_gyr_cov: 0.0001 # 0.1
+
+    lio:
+      max_iterations: 5
+      dept_err: 0.02
+      beam_err: 0.05
+      min_eigen_value: 0.0025 # 0.005
+      voxel_size: 0.3
+      max_layer: 2
+      max_points_num: 50
+      layer_init_num: [5, 5, 5, 5, 5]
+      # SA-LIVO arXiv v2: flat grid + query-time adaptive Chebyshev support
+      adaptive_support_en: true
+      n_pca: 25                      # fixed by v2
+      planarity_ratio_th: 0.05     # κth dimensionless planarity gate
+      min_eigen_abs: 0.01          # εmin absolute eigenvalue guard
+      freeze_min_points: 50        # min points before planarity freeze applies
+      chi2_thres: 9.0               # τL BSW-tuned (paper: dataset-tuned)
+      multi_scale_en: true         # Scale-1 shell expansion
+      scale1_radius: 2.0           # rs (m)
+      max_shell: 6                 # ℓmax
+
+    saif:
+      sigma_min: 1.0               # σmin information-amplitude threshold
+      eps_pose_inflate: 0.01       # εP post-convergence covariance inflation
+      conv_phi_deg: 0.01           # ϵϕ convergence (deg)
+      conv_p_cm: 0.015             # ϵp convergence (cm)
+
+    sa_vio:
+      window_size: 5               # W sliding window
+      patch_spacing: 8             # sp → ρ = max(1, ⌊sp/2⌋−1) = 3 px
+      max_obs_per_frame: 100       # Nobs per-frame cap
+      min_obs: 100                 # Nq support threshold (BSW-tuned)
+      depth_min: 0.5               # dmin (m)
+      theta_max_deg: 80.0          # θmax view-angle gate
+      parallax_min_px: 0.5         # δplx parallax gate (px)
+      abs_res_max: 15.0            # δabs absolute residual gate (gray)
+      chi2_thres: 6.635            # τV χ² innovation gate
+      delta_rms: 12.0              # δrms for qrms (gray)
+      sigma_rms: 8.0               # σrms for qrms (gray)
+      rho_min: 0.3                 # ρmin for qrej
+      rho_max: 0.7                 # ρmax for qrej
+      delta_alpha: 0.2             # δα → wcam = exp(−max(|log α|−δα, 0))
+      sigma_px: 1.0                # σpx photometric noise floor
+      photometric_huber_en: false  # paper Eq.30 has no Huber
+      info_scale: 1.0              # paper default; best ATE on pristine reference
+      rrms_after_gates: false      # BSW: scene rrms over all projections (V4-tuned)
+      point_image_cell_px: 16.0    # paper VI-B cell (used when grid switch on)
+      point_select_image_grid: false  # BSW keeps V4 world-grid selection
+      dual_event_en: false         # Algorithm 2: single joint InEKF update
+      use_baseline_vio_frontend: false  # original VIOManager → SAIF info form
+      baseline_vio_sequential: false    # LIO then original VIOManager (milestone-1)
+      baseline_lio_state_estimation: false  # original StateEstimation for LIO
+      seq_output_post_vio: false        # diagnostic: output VIO-corrected pose
+      seq_color_pre_vio: false          # diagnostic: colour with pre-VIO pose
+      dup_R_deg: 0.5               # duplicate-frame suppression δR
+      dup_t_m: 0.05                # duplicate-frame suppression δt
+
+    local_map:  
+      map_sliding_en: false
+      half_map_size: 100
+      sliding_thresh: 8.0
+
+    uav:
+      imu_rate_odom: false
+      gravity_align_en: false
+
+    publish:
+      dense_map_en: true
+      pub_effect_point_en: false 
+      pub_plane_en: false
+      pub_scan_num: 1
+      blind_rgb_points: 0.0
+
+    evo:
+      seq_name: "CBD_Building_01"
+      pose_output_en: false
+
+    pcd_save:
+      pcd_save_en: false
+      color_delay_frames: -1       # colour frame n with image n-1 (reference +0.1 s)
+      color_prev_mix: 0.2          # 20% current-image blend (RGB-optimal on BSW)
+      color_blur_sigma: 0.0        # Gaussian sigma on colour image (retained, disabled)
+      colmap_output_en: false # need to set interval = -1
+      filter_size_pcd: 0.15
+      interval: -1
+      # how many LiDAR frames saved in each pcd file;
+      # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.

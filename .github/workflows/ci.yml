@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-test:
+    name: saif unit test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ libeigen3-dev
+      - name: Build and run saif test
+        run: |
+          cd sa_livo/tests
+          g++ -std=c++17 -O2 -I/usr/include/eigen3 -I../include \
+            saif_test.cpp ../src/saif.cpp -o saif_test
+          ./saif_test
+
+  ros2-build:
+    name: ROS2 Humble colcon build
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ros-tooling/setup-ros@0.7.x
+        with:
+          required-ros-distributions: humble
+      - name: Build package
+        run: |
+          cd sa_livo
+          . /opt/ros/humble/setup.bash
+          colcon build --packages-select sa_livo \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release \
+            -DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4 \
+            --continue-on-error

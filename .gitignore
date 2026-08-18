@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+install/
+log/
+*.o
+*.so
+
+# Large media / datasets
+*.bag
+*.db3
+*.pcd
+*.pdf
+
+# Runtime outputs
+sa_livo/Log/
+sa_livo/tmp/
+
+# Local pre-publication material (not for the public repository)
+_internal/

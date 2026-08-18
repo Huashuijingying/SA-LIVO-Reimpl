@@ -1,0 +1,15 @@
+/**:
+  ros__parameters:
+    camera:
+      model: EquidistantCamera
+      width: 720
+      height: 540
+      scale: 1.0
+      fx: 352.779
+      fy: 354.609
+      cx: 359.035
+      cy: 260.546
+      k1: -0.04217
+      k2: -0.00413
+      k3: 0.00179
+      k4: -0.00063
