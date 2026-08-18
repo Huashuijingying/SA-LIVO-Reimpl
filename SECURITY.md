@@ -3,8 +3,8 @@
 ## Reporting a vulnerability
 
 Please do **not** open a public issue for security vulnerabilities. Report
-privately to the repository maintainers via email or a private channel, and
-include:
+privately to the repository maintainer
+(Huashuijingying <1098763683@qq.com>) via email, and include:
 
 - a description of the vulnerability and the affected version/commit;
 - steps to reproduce;
