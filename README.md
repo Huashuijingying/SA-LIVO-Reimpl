@@ -30,6 +30,8 @@ been explored and recorded.
 
 ## Citation
 
+If you use this reproduction, please cite the SA-LIVO paper:
+
 ```bibtex
 @article{cao2026salivo,
   title={SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with
@@ -39,6 +41,19 @@ been explored and recorded.
   journal={IEEE Transactions on Robotics},
   year={2026},
   note={arXiv:2606.25699}
+}
+```
+
+The code base this reproduction is derived from:
+
+```bibtex
+@article{zheng2024fastlivo2,
+  title={FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry},
+  author={Zheng, Chunran and Xu, Wei and Zou, Zuhao and Hua, Tong and
+          Liu, Changwu and Zhang, Fu},
+  journal={IEEE Transactions on Robotics},
+  year={2025},
+  note={arXiv:2407.12500}
 }
 ```
 
@@ -102,7 +117,7 @@ ROS2 code base and is therefore released under the
 [GPLv2](LICENSE) license of the original project. Respect the rights of the
 SA-LIVO paper authors and the licenses of the benchmark datasets (HILTI'22,
 New College, Oxford Spires; New College / Oxford Spires data are
-CC BY-NC-SA 4.0).
+CC BY-NC-SA 4.0). See [NOTICE](NOTICE.md) for provenance details.
 
 ## Project structure
 

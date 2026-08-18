@@ -18,6 +18,8 @@ IEEE T-RO 2026）论文理论模块（Sect. IV–VII）的独立复现，并在�
 
 ## 引用
 
+使用本复现请引用 SA-LIVO 论文：
+
 ```bibtex
 @article{cao2026salivo,
   title={SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with
@@ -27,6 +29,19 @@ IEEE T-RO 2026）论文理论模块（Sect. IV–VII）的独立复现，并在�
   journal={IEEE Transactions on Robotics},
   year={2026},
   note={arXiv:2606.25699}
+}
+```
+
+本复现所基于的代码库（FAST-LIVO2）：
+
+```bibtex
+@article{zheng2024fastlivo2,
+  title={FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry},
+  author={Zheng, Chunran and Xu, Wei and Zou, Zuhao and Hua, Tong and
+          Liu, Changwu and Zhang, Fu},
+  journal={IEEE Transactions on Robotics},
+  year={2025},
+  note={arXiv:2407.12500}
 }
 ```
 
@@ -63,7 +78,8 @@ SE(3) Umeyama 对齐、平移 APE）；NCD/Spires 为刚性 SE(3) Umeyama 平移
 
 本仓库派生自 FAST-LIVO2 ROS2 代码库，按原项目的
 [GPLv2](LICENSE) 许可发布。请尊重 SA-LIVO 论文作者权益以及基准数据集
-许可（New College / Oxford Spires 为 CC BY-NC-SA 4.0）。
+许可（New College / Oxford Spires 为 CC BY-NC-SA 4.0）。来源与致谢详见
+[NOTICE](NOTICE.md)。
 
 ## 目录结构
 

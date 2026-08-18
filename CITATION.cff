@@ -7,7 +7,7 @@ keywords:
   - LiDAR-inertial-visual odometry
   - degeneracy handling
   - InEKF
-license: GPL-2.0
+license: GPL-2.0-only
 preferred-citation:
   type: article
   title: "SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware Degeneracy Handling"
