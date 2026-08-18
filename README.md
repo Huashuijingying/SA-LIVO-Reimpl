@@ -15,6 +15,7 @@ RMSE vs. the paper's Table II "Ours" column:
 | Coverage | 29/29 |
 |---|---:|
 | At or near paper (≤ ~1.5×) | 24/29 |
+| At or better than the paper's FAST-LIVO2 baseline | 20/29 |
 | HILTI'22 | 13/15 |
 | New College | 6/7 |
 | Oxford Spires | 5/7 |
