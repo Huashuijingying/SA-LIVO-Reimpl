@@ -35,7 +35,7 @@ or approaches the paper's "Ours" on **24/29**.
 | NCD | quad-hard | pv10 LIO | 0.0608 | 0.080 | 0.055 | ✓ | 1.10× |
 | NCD | ug-hard | LIO+i900+κth0.03 | 0.0543 | 0.054 | 0.051 | — | 1.06× |
 | NCD | quad-easy | LIO | 0.0646 | 0.081 | 0.026 | ✓ | 2.48× |
-| NCD | stairs | region-grow diag | 98.6 | 0.057 | 0.036 | — | — |
+| NCD | stairs | frontier region-grow + cov + adaptive SAIF | 0.1730 | 0.057 | 0.036 | — | 4.81× |
 | Spires | kc05 | pmn | 0.0235 | 0.843 | 0.110 | ✓ | 0.21× |
 | Spires | bp01 | pmn | 0.0960 | 0.110 | 0.112 | ✓ | 0.86× |
 | Spires | oq01 | pmn | 0.0649 | 0.297 | 0.055 | ✓ | 1.18× |
@@ -59,7 +59,7 @@ Notes:
 | HILTI | exp03 (stairs) | 0.9725 | 0.029 | 33× | near-coplanar degeneracy; SA/visual core |
 | HILTI | exp18 (corridor) | 0.0638 | 0.022 | 2.9× | GT z-jump artifact caps official value (real ~1.4×) |
 | NCD | quad-easy | 0.0646 | 0.026 | 2.48× | resistant to all parameter levers |
-| NCD | stairs | 98.6 | 0.036 | — | stair degeneracy; SA/visual core |
+| NCD | stairs | 0.1730 | 0.036 | 4.81× | stair degeneracy; improved by frontier region-grow, plane covariance, and adaptive SAIF |
 | Spires | kc02 | 0.0464 | 0.024 | 1.93× | resistant to all parameter levers |
 
 ## Acceptance target
