@@ -20,6 +20,7 @@ Further modified for this SA-LIVO reproduction by Huashuijingying, 2026-08.
 #include "common_lib.h"
 #include "saif.h"
 #include "adaptive_voxel_map_v2.h"
+#include <atomic>
 #include <Eigen/Dense>
 #include <fstream>
 #include <functional>
@@ -79,6 +80,9 @@ typedef struct VoxelMapConfig
                                             // matched-points ratio (per-frame)
   bool scale1_region_grow_en_ = false;      // region-growing Scale-1 (stays on
                                             // one surface, avoids mixing)
+  bool scale1_region_grow_frontier_en_ = false; // deterministic connected growth
+  double scale1_region_grow_normal_deg_ = 30.0;
+  double scale1_region_grow_dist_m_ = 0.0;       // <=0: derive from voxel size
   bool adaptive_support_en_ = true; // arXiv v2 flat-grid query-time support
   int adaptive_n_pca_ = 25;         // v2 fixed minimum support
   bool map_cov_association_en_ = false; // Eq.11 covariance in association
@@ -120,6 +124,18 @@ typedef struct VoxelMapConfig
   double adaptive_voxel_alpha_ = 0.5;        // alpha_r in Eq.7
   bool state_est_original_cov_en_ = false;   // original FAST-LIVO2 world covariance in StateEstimation
   double epsilon0_ = 1e-3;                   // ε0 residual-variance floor (Eq. 13)
+
+  // Diagnostic soft takeover for sustained LiDAR/visual degeneracy. Defaults
+  // keep the existing estimator behavior unchanged.
+  bool degenerate_guard_en_ = false;
+  double degenerate_lidar_scale_min_ = 0.15;
+  int degenerate_min_survivors_ = 20;
+  double degenerate_min_survivor_ratio_ = 0.10;
+  double degenerate_visual_q_min_ = 0.05;
+  double degenerate_velocity_warn_ = 2.0;
+  int degenerate_trigger_frames_ = 2;
+  int degenerate_recovery_frames_ = 5;
+  int degenerate_guard_warmup_frames_ = 1;
 } VoxelMapConfig;
 
 typedef struct PointToPlane
@@ -356,6 +372,9 @@ public:
   // True when the last joint update had zero usable measurements (0 LiDAR
   // survivors and no active visual), i.e. total information loss.
   bool degenerate_update_ = false;
+  // True when the last update was under the soft degeneracy guard. The mapper
+  // uses this to keep a suspect pose from contaminating the voxel map.
+  bool map_update_blocked_ = false;
   V3D position_last_;
 
   V3D last_slide_position = {0,0,0};
@@ -370,6 +389,18 @@ public:
   std::vector<PointToPlane> ptpl_list_;
 
   FusedInfo6 fused_last_;  // last SAIF output (debug/logging)
+
+  // Region-grow counters are reset before each residual build. Atomic fields
+  // keep diagnostics valid while BuildResidualListOMP uses OpenMP.
+  std::atomic<int> rg_diag_calls_{0};
+  std::atomic<int> rg_diag_seed_ok_{0};
+  std::atomic<int> rg_diag_added_voxels_{0};
+  std::atomic<int> rg_diag_candidates_{0};
+
+  bool degenerate_guard_active_ = false;
+  int degenerate_bad_frames_ = 0;
+  int degenerate_good_frames_ = 0;
+  double last_lidar_info_scale_ = 1.0;
 
   VoxelMapManager(VoxelMapConfig &config_setting, std::unordered_map<VOXEL_LOCATION, VoxelOctoTree *> &voxel_map)
       : config_setting_(config_setting), voxel_map_(voxel_map)

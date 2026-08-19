@@ -16,6 +16,7 @@ Further modified for this SA-LIVO reproduction by Huashuijingying, 2026-08.
 
 #include "voxel_map.h"
 #include "saif.h"
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <unordered_set>
@@ -96,6 +97,9 @@ void loadVoxelConfig(rclcpp::Node::SharedPtr &node, VoxelMapConfig &voxel_config
   try_declare.template operator()<bool>("lio.coarse_map_fallback_en", false);
   try_declare.template operator()<bool>("lio.info_plane_decorr_en", false);
   try_declare.template operator()<bool>("lio.scale1_region_grow_en", false);
+  try_declare.template operator()<bool>("lio.scale1_region_grow_frontier_en", false);
+  try_declare.template operator()<double>("lio.scale1_region_grow_normal_deg", 30.0);
+  try_declare.template operator()<double>("lio.scale1_region_grow_dist_m", 0.0);
   try_declare.template operator()<bool>("lio.map_cov_association_en", false);
 
   // SAIF (Sect. VII)
@@ -123,6 +127,15 @@ void loadVoxelConfig(rclcpp::Node::SharedPtr &node, VoxelMapConfig &voxel_config
   try_declare.template operator()<bool>("lio.plane_cov_paper_en", false);
   try_declare.template operator()<double>("lio.map_insert_min_vel", 0.0);
   try_declare.template operator()<double>("lio.prior_scale_when_statecov", 0.0);
+  try_declare.template operator()<bool>("saif.degenerate_guard_en", false);
+  try_declare.template operator()<double>("saif.degenerate_lidar_scale_min", 0.15);
+  try_declare.template operator()<int>("saif.degenerate_min_survivors", 20);
+  try_declare.template operator()<double>("saif.degenerate_min_survivor_ratio", 0.10);
+  try_declare.template operator()<double>("saif.degenerate_visual_q_min", 0.05);
+  try_declare.template operator()<double>("saif.degenerate_velocity_warn", 2.0);
+  try_declare.template operator()<int>("saif.degenerate_trigger_frames", 2);
+  try_declare.template operator()<int>("saif.degenerate_recovery_frames", 5);
+  try_declare.template operator()<int>("saif.degenerate_guard_warmup_frames", 1);
 
   // Declaration of parameter of type std::vector<int> won't build, https://github.com/ros2/rclcpp/issues/1585  
   try_declare.template operator()<vector<int64_t>>("lio.layer_init_num", std::vector<int64_t>{5,5,5,5,5}); 
@@ -164,6 +177,9 @@ void loadVoxelConfig(rclcpp::Node::SharedPtr &node, VoxelMapConfig &voxel_config
   node->get_parameter("lio.coarse_map_fallback_en", voxel_config.coarse_map_fallback_en_);
   node->get_parameter("lio.info_plane_decorr_en", voxel_config.info_plane_decorr_en_);
   node->get_parameter("lio.scale1_region_grow_en", voxel_config.scale1_region_grow_en_);
+  node->get_parameter("lio.scale1_region_grow_frontier_en", voxel_config.scale1_region_grow_frontier_en_);
+  node->get_parameter("lio.scale1_region_grow_normal_deg", voxel_config.scale1_region_grow_normal_deg_);
+  node->get_parameter("lio.scale1_region_grow_dist_m", voxel_config.scale1_region_grow_dist_m_);
   node->get_parameter("lio.map_cov_association_en", voxel_config.map_cov_association_en_);
   voxel_config.normal_consistency_cos_ = 0.95;  // cos⁻¹(0.95) ≈ 18° (Sect. V-G)
 
@@ -199,6 +215,15 @@ void loadVoxelConfig(rclcpp::Node::SharedPtr &node, VoxelMapConfig &voxel_config
   node->get_parameter("lio.plane_cov_paper_en", voxel_config.plane_cov_paper_en_);
   node->get_parameter("lio.map_insert_min_vel", voxel_config.map_insert_min_vel_);
   node->get_parameter("lio.prior_scale_when_statecov", voxel_config.prior_scale_when_statecov_);
+  node->get_parameter("saif.degenerate_guard_en", voxel_config.degenerate_guard_en_);
+  node->get_parameter("saif.degenerate_lidar_scale_min", voxel_config.degenerate_lidar_scale_min_);
+  node->get_parameter("saif.degenerate_min_survivors", voxel_config.degenerate_min_survivors_);
+  node->get_parameter("saif.degenerate_min_survivor_ratio", voxel_config.degenerate_min_survivor_ratio_);
+  node->get_parameter("saif.degenerate_visual_q_min", voxel_config.degenerate_visual_q_min_);
+  node->get_parameter("saif.degenerate_velocity_warn", voxel_config.degenerate_velocity_warn_);
+  node->get_parameter("saif.degenerate_trigger_frames", voxel_config.degenerate_trigger_frames_);
+  node->get_parameter("saif.degenerate_recovery_frames", voxel_config.degenerate_recovery_frames_);
+  node->get_parameter("saif.degenerate_guard_warmup_frames", voxel_config.degenerate_guard_warmup_frames_);
 }
 
 void VoxelOctoTree::init_plane(const std::vector<pointWithVar> &points, VoxelPlane *plane)
@@ -757,6 +782,7 @@ void VoxelMapManager::StateEstimation(StatesGroup &state_propagat)
 
 void VoxelMapManager::JointStateEstimation(StatesGroup &state_propagat, const InfoForm6 *vis_info, double q)
 {
+  const int guard_frame_id = current_frame_id_++;
   static int dbg_sig_frames = 0;
   static std::vector<double> dbg_pv_term, dbg_pn_term, dbg_sig2s, dbg_rs;
   cross_mat_list_.clear();
@@ -811,6 +837,10 @@ void VoxelMapManager::JointStateEstimation(StatesGroup &state_propagat, const In
   int conv_count = 0;
   int used_iters = 0;
   int final_survivors = 0;
+  bool frame_guard_active = degenerate_guard_active_;
+  double frame_lidar_info_scale = 1.0;
+  map_update_blocked_ = false;
+  last_lidar_info_scale_ = 1.0;
 
   for (int iter = 0; iter < max_iter; iter++)
   {
@@ -864,8 +894,23 @@ void VoxelMapManager::JointStateEstimation(StatesGroup &state_propagat, const In
     // restores the original FAST-LIVO2 behavior (re-match every iterate).
     if (iter == 0 || config_setting_.reassoc_each_iter_en_)
     {
+      if (iter == 0)
+      {
+        rg_diag_calls_.store(0, std::memory_order_relaxed);
+        rg_diag_seed_ok_.store(0, std::memory_order_relaxed);
+        rg_diag_added_voxels_.store(0, std::memory_order_relaxed);
+        rg_diag_candidates_.store(0, std::memory_order_relaxed);
+      }
       ptpl_list_.clear();
       BuildResidualListOMP(pv_list_, ptpl_list_);
+      if (iter == 0 && config_setting_.scale1_region_grow_en_)
+      {
+        printf("[ SA-RG ] calls=%d seed_ok=%d added_voxels=%d candidates=%d cached=%zu\n",
+               rg_diag_calls_.load(std::memory_order_relaxed),
+               rg_diag_seed_ok_.load(std::memory_order_relaxed),
+               rg_diag_added_voxels_.load(std::memory_order_relaxed),
+               rg_diag_candidates_.load(std::memory_order_relaxed), ptpl_list_.size());
+      }
     }
     InfoForm6 LambdaL;
     int survivors = 0;
@@ -959,6 +1004,70 @@ void VoxelMapManager::JointStateEstimation(StatesGroup &state_propagat, const In
       const double ratio = std::min(1.0, static_cast<double>(plane_keys.size()) / static_cast<double>(survivors));
       LambdaL.Lambda *= ratio;
       LambdaL.b *= ratio;
+    }
+
+    if (iter == 0 && config_setting_.degenerate_guard_en_ &&
+        guard_frame_id >= std::max(config_setting_.degenerate_guard_warmup_frames_, 0))
+    {
+      const double survivor_ratio = N > 0 ? static_cast<double>(survivors) / static_cast<double>(N) : 0.0;
+      const bool low_match = survivors < config_setting_.degenerate_min_survivors_ ||
+                             survivor_ratio < config_setting_.degenerate_min_survivor_ratio_;
+      const bool low_visual = vis_info != nullptr && q_used < config_setting_.degenerate_visual_q_min_;
+      const bool high_velocity = state_propagat.vel_end.norm() > config_setting_.degenerate_velocity_warn_;
+      const int signals = static_cast<int>(low_match) + static_cast<int>(low_visual) + static_cast<int>(high_velocity);
+      if (signals >= 2)
+      {
+        degenerate_bad_frames_++;
+        degenerate_good_frames_ = 0;
+      }
+      else
+      {
+        degenerate_bad_frames_ = 0;
+        degenerate_good_frames_++;
+      }
+      if (!degenerate_guard_active_ &&
+          degenerate_bad_frames_ >= std::max(config_setting_.degenerate_trigger_frames_, 1))
+      {
+        degenerate_guard_active_ = true;
+      }
+      if (degenerate_guard_active_ &&
+          degenerate_good_frames_ >= std::max(config_setting_.degenerate_recovery_frames_, 1))
+      {
+        degenerate_guard_active_ = false;
+        degenerate_good_frames_ = 0;
+      }
+      frame_guard_active = degenerate_guard_active_;
+      if (frame_guard_active)
+      {
+        const int depth = std::min(std::max(degenerate_bad_frames_, 1), 3);
+        frame_lidar_info_scale = std::max(config_setting_.degenerate_lidar_scale_min_,
+                                          std::pow(0.25, static_cast<double>(depth)));
+      }
+      printf("[ SA-GUARD ] survivors=%d/%d ratio=%.3f q=%.3f v=%.3f signals=%d active=%d lidar_scale=%.3f\n",
+             survivors, N, survivor_ratio, q_used, state_propagat.vel_end.norm(), signals,
+             frame_guard_active ? 1 : 0, frame_lidar_info_scale);
+    }
+    else if (iter == 0 && config_setting_.degenerate_guard_en_)
+    {
+      degenerate_guard_active_ = false;
+      degenerate_bad_frames_ = 0;
+      degenerate_good_frames_ = 0;
+      frame_guard_active = false;
+      frame_lidar_info_scale = 1.0;
+    }
+    else if (iter == 0 && !config_setting_.degenerate_guard_en_)
+    {
+      degenerate_guard_active_ = false;
+      degenerate_bad_frames_ = 0;
+      degenerate_good_frames_ = 0;
+      frame_guard_active = false;
+      frame_lidar_info_scale = 1.0;
+    }
+    if (frame_guard_active)
+    {
+      LambdaL.Lambda *= frame_lidar_info_scale;
+      LambdaL.b *= frame_lidar_info_scale;
+      last_lidar_info_scale_ = frame_lidar_info_scale;
     }
     if (iter == 0 && dbg_sig_frames < 3 && dbg_sig2s.size() > 20)
     {
@@ -1074,12 +1183,14 @@ void VoxelMapManager::JointStateEstimation(StatesGroup &state_propagat, const In
 
   effct_feat_num_ = final_survivors;
   position_last_ = state_.pos_end;
+  map_update_blocked_ = frame_guard_active;
 
   degenerate_update_ = (final_survivors == 0) &&
       (vis_info == nullptr || q_used * (LambdaV.Lambda.norm() + LambdaV.b.norm()) < 1e-9);
 
   printf("[ SA-LIVO ] joint update: %d iters, %d final gated plane matches, gate weights: [%.3f %.3f %.3f %.3f %.3f %.3f]"
-         " | |v|=%.3f covtr=%.3e |d|=%.3f lam=[%.2e %.2e %.2e %.2e %.2e %.2e]\n",
+         " | |v|=%.3f covtr=%.3e |d|=%.3f lidar_scale=%.3f map_block=%d"
+         " lam=[%.2e %.2e %.2e %.2e %.2e %.2e]\n",
          used_iters, effct_feat_num_,
          fused_last_.gate_weights.size() > 0 ? fused_last_.gate_weights[0] : 0.0,
          fused_last_.gate_weights.size() > 1 ? fused_last_.gate_weights[1] : 0.0,
@@ -1087,7 +1198,8 @@ void VoxelMapManager::JointStateEstimation(StatesGroup &state_propagat, const In
          fused_last_.gate_weights.size() > 3 ? fused_last_.gate_weights[3] : 0.0,
          fused_last_.gate_weights.size() > 4 ? fused_last_.gate_weights[4] : 0.0,
          fused_last_.gate_weights.size() > 5 ? fused_last_.gate_weights[5] : 0.0,
-         state_.vel_end.norm(), state_.cov.trace(), delta0.norm(),
+         state_.vel_end.norm(), state_.cov.trace(), delta0.norm(), last_lidar_info_scale_,
+         map_update_blocked_ ? 1 : 0,
          fused_last_.eigenvals.size() > 0 ? fused_last_.eigenvals[0] : 0.0,
          fused_last_.eigenvals.size() > 1 ? fused_last_.eigenvals[1] : 0.0,
          fused_last_.eigenvals.size() > 2 ? fused_last_.eigenvals[2] : 0.0,
@@ -1597,7 +1709,8 @@ void VoxelMapManager::build_single_residual_sa(pointWithVar &pv, bool &is_sucess
     Eigen::Matrix<double, 1, 6> Jnq;
     Jnq.block<1, 3>(0, 0) = pv.point_w - c;
     Jnq.block<1, 3>(0, 3) = -n;
-    const double sig2 = 1e-3 + (Jnq * pvar * Jnq.transpose()).value() + (n.transpose() * pv.var * n).value();
+    const double sig2 = 1e-3 + (Jnq * cd.plane_var * Jnq.transpose()).value() +
+                        (n.transpose() * pv.var * n).value();
     cd.sigma = std::sqrt(std::max(sig2, 1e-12));
     cands.push_back(cd);
   };
@@ -1648,11 +1761,10 @@ void VoxelMapManager::build_single_residual_sa(pointWithVar &pv, bool &is_sucess
 
     if (config_setting_.scale1_region_grow_en_)
     {
-      // Region-growing Scale-1 (diagnostic): seed from the query voxel's
-      // statistics, then add shell voxels only when their centroid is close
-      // to the current fit plane and their normal matches.  This stays on a
-      // single surface (e.g. a stair/ramp slope) and avoids mixing the
-      // opposite wall in narrow corridors.
+      // Region-growing Scale-1: seed from the query voxel, then expand in
+      // deterministic shells. The frontier option prevents disconnected
+      // parallel surfaces from being absorbed into the same fit.
+      rg_diag_calls_.fetch_add(1, std::memory_order_relaxed);
       V3D s1g(V3D::Zero());
       M3D S2g(M3D::Zero());
       int ng = 0;
@@ -1674,50 +1786,124 @@ void VoxelMapManager::build_single_residual_sa(pointWithVar &pv, bool &is_sucess
         mean = s1g / ng;
         const M3D cov = S2g / ng - mean * mean.transpose();
         Eigen::SelfAdjointEigenSolver<M3D> es(cov);
+        if (es.info() != Eigen::Success || !cov.allFinite()) return false;
         lam_min = std::max(es.eigenvalues()(0), 0.0);
         kappa = lam_min / std::max(cov.trace(), 1e-12);
         normal = es.eigenvectors().col(0);
-        return true;
+        return normal.allFinite() && normal.norm() > 1e-6;
       };
       V3D mean_g, normal_g;
       double kappa_g = 1.0 / 3.0, lam_g = 1.0;
-      fit_g(mean_g, normal_g, kappa_g, lam_g);
-      const double cos_same_surface = std::cos(30.0 * M_PI / 180.0);
-      const double grow_dist = std::max(2.0 * voxel_size, 0.3);
-      for (int l = 1; l <= lmax; l++)
+      if (fit_g(mean_g, normal_g, kappa_g, lam_g))
       {
-        bool changed = false;
-        for (int dx = -l; dx <= l; dx++)
+        rg_diag_seed_ok_.fetch_add(1, std::memory_order_relaxed);
+        const double normal_deg = std::clamp(config_setting_.scale1_region_grow_normal_deg_, 0.0, 90.0);
+        const double cos_same_surface = std::cos(normal_deg * M_PI / 180.0);
+        const double grow_dist = config_setting_.scale1_region_grow_dist_m_ > 0.0
+                                     ? config_setting_.scale1_region_grow_dist_m_
+                                     : std::max(2.0 * voxel_size, 0.3);
+        std::unordered_set<VOXEL_LOCATION> accepted;
+        std::unordered_set<VOXEL_LOCATION> visited;
+        accepted.insert(pos);
+        visited.insert(pos);
+
+        for (int l = 1; l <= lmax; l++)
         {
-          for (int dy = -l; dy <= l; dy++)
+          const std::unordered_set<VOXEL_LOCATION> accepted_before = accepted;
+          std::vector<VOXEL_LOCATION> shell_accept;
+          for (int dx = -l; dx <= l; dx++)
           {
-            for (int dz = -l; dz <= l; dz++)
+            for (int dy = -l; dy <= l; dy++)
             {
-              if (std::max(std::abs(dx), std::max(std::abs(dy), std::abs(dz))) != l) continue;
-              VOXEL_LOCATION np(pos.x + dx, pos.y + dy, pos.z + dz);
-              auto it = voxel_map_.find(np);
-              if (it == voxel_map_.end() || it->second->n_stats_ < MIN_PTS) continue;
-              VoxelOctoTree *vt = it->second;
-              V3D vmean;
-              M3D vcov;
-              if (!vt->statsCovariance(vmean, vcov)) continue;
-              Eigen::SelfAdjointEigenSolver<M3D> es(vcov);
-              const V3D vn = es.eigenvectors().col(0);
-              if (std::fabs(vn.dot(normal_g)) < cos_same_surface) continue;
-              const double d2p = std::fabs(normal_g.dot(vmean) + (-normal_g.dot(mean_g)));
-              if (d2p > grow_dist) continue;
-              add_stats(vt);
-              changed = true;
-              fit_g(mean_g, normal_g, kappa_g, lam_g);
+              for (int dz = -l; dz <= l; dz++)
+              {
+                if (std::max(std::abs(dx), std::max(std::abs(dy), std::abs(dz))) != l) continue;
+                VOXEL_LOCATION np(pos.x + dx, pos.y + dy, pos.z + dz);
+                if (config_setting_.scale1_region_grow_frontier_en_)
+                {
+                  bool has_frontier = false;
+                  for (int fx = -1; fx <= 1 && !has_frontier; fx++)
+                  {
+                    for (int fy = -1; fy <= 1 && !has_frontier; fy++)
+                    {
+                      for (int fz = -1; fz <= 1; fz++)
+                      {
+                        if (fx == 0 && fy == 0 && fz == 0) continue;
+                        if (accepted_before.find(VOXEL_LOCATION(np.x + fx, np.y + fy, np.z + fz)) != accepted_before.end())
+                        {
+                          has_frontier = true;
+                          break;
+                        }
+                      }
+                    }
+                  }
+                  if (!has_frontier) continue;
+                }
+                if (!visited.insert(np).second) continue;
+                auto it = voxel_map_.find(np);
+                if (it == voxel_map_.end() || it->second->n_stats_ < MIN_PTS) continue;
+                VoxelOctoTree *vt = it->second;
+                V3D vmean;
+                M3D vcov;
+                if (!vt->statsCovariance(vmean, vcov)) continue;
+                Eigen::SelfAdjointEigenSolver<M3D> es(vcov);
+                if (es.info() != Eigen::Success) continue;
+                const V3D vn = es.eigenvectors().col(0);
+                if (!vn.allFinite() || std::fabs(vn.dot(normal_g)) < cos_same_surface) continue;
+                const double d2p = std::fabs(normal_g.dot(vmean - mean_g));
+                if (d2p > grow_dist) continue;
+                shell_accept.push_back(np);
+              }
+            }
+          }
+          if (shell_accept.empty()) break;
+          for (const VOXEL_LOCATION &np : shell_accept)
+          {
+            auto it = voxel_map_.find(np);
+            if (it != voxel_map_.end()) add_stats(it->second);
+            accepted.insert(np);
+          }
+          rg_diag_added_voxels_.fetch_add(static_cast<int>(shell_accept.size()), std::memory_order_relaxed);
+          if (!fit_g(mean_g, normal_g, kappa_g, lam_g)) break;
+        }
+
+        // Propagate the point/covariance statistics into the 6-DoF plane
+        // parameter covariance. This avoids treating a grown fit as exact.
+        Eigen::Matrix<double, 6, 6> plane_var = Eigen::Matrix<double, 6, 6>::Zero();
+        if (ng >= MIN_PTS && agg_points.size() == agg_covs.size())
+        {
+          const V3D mean = s1g / ng;
+          const M3D cov = S2g / ng - mean * mean.transpose();
+          Eigen::SelfAdjointEigenSolver<M3D> es(cov);
+          if (es.info() == Eigen::Success)
+          {
+            const auto evals = es.eigenvalues();
+            const auto evecs = es.eigenvectors();
+            for (std::size_t i = 0; i < agg_points.size(); ++i)
+            {
+              Eigen::Matrix<double, 6, 3> Ji = Eigen::Matrix<double, 6, 3>::Zero();
+              M3D F = M3D::Zero();
+              for (int m = 1; m < 3; ++m)
+              {
+                const double denom = static_cast<double>(ng) * (evals(0) - evals(m));
+                if (std::fabs(denom) < 1e-12) continue;
+                const V3D vm = evecs.col(m);
+                const V3D vmin = evecs.col(0);
+                F.row(m) = ((agg_points[i] - mean).transpose() / denom) *
+                           (vm * vmin.transpose() + vmin * vm.transpose());
+              }
+              Ji.block<3, 3>(0, 0) = evecs * F;
+              Ji.block<3, 3>(3, 0) = M3D::Identity() / static_cast<double>(ng);
+              plane_var += Ji * agg_covs[i] * Ji.transpose();
             }
           }
         }
-        if (!changed) break;
-      }
-      if (ng >= MIN_PTS && (kappa_g < config_setting_.planarity_ratio_th_) &&
-          (lam_g < config_setting_.min_eigen_abs_))
-      {
-        push_cand(normal_g, mean_g, Eigen::Matrix<double, 6, 6>::Zero(), false, true, kappa_g, 1, lam_g, ng);
+        if (ng >= MIN_PTS && kappa_g < config_setting_.planarity_ratio_th_ &&
+            lam_g < config_setting_.min_eigen_abs_ && plane_var.allFinite())
+        {
+          push_cand(normal_g, mean_g, plane_var, false, true, kappa_g, 1, lam_g, ng);
+          rg_diag_candidates_.fetch_add(1, std::memory_order_relaxed);
+        }
       }
     }
     else

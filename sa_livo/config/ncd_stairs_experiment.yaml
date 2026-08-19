@@ -1,0 +1,23 @@
+/**:
+  ros__parameters:
+    # NCD stairs experiment overlay. Keep config/ncd.yaml as the baseline.
+    lio:
+      scale1_region_grow_en: true
+      scale1_region_grow_frontier_en: true
+      scale1_region_grow_normal_deg: 20.0
+      scale1_region_grow_dist_m: 1.0
+
+    saif:
+      # Scene-relative gating attenuates weak directions even when their raw
+      # information amplitude is much larger than the fixed sigma_min=1.
+      sigma_min_adaptive_en: true
+      sigma_min_lambda_max_scale: 0.10
+      degenerate_guard_en: true
+      degenerate_lidar_scale_min: 0.05
+      degenerate_min_survivors: 40
+      degenerate_min_survivor_ratio: 0.15
+      degenerate_visual_q_min: 0.05
+      degenerate_velocity_warn: 2.0
+      degenerate_trigger_frames: 1
+      degenerate_recovery_frames: 5
+      degenerate_guard_warmup_frames: 1

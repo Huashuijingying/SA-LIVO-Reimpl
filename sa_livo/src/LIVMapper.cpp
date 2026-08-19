@@ -1003,9 +1003,14 @@ void LIVMapper::handleVIO()
     const double vel_norm = _state.vel_end.norm();
     const bool vel_ok =
         (insert_min_vel <= 0.0) || (vel_norm >= insert_min_vel);
-    if (vel_ok && (map_insert_every_ <= 1 || (map_insert_counter_ % map_insert_every_) == 0))
+    if (!voxelmap_manager->map_update_blocked_ &&
+        vel_ok && (map_insert_every_ <= 1 || (map_insert_counter_ % map_insert_every_) == 0))
     {
       voxelmap_manager->UpdateVoxelMap(voxelmap_manager->pv_list_);
+    }
+    else if (voxelmap_manager->map_update_blocked_)
+    {
+      printf("[ MAP-GUARD ] skipped voxel insertion under degeneracy guard\n");
     }
   }
   _pv_list = voxelmap_manager->pv_list_;
@@ -1305,8 +1310,15 @@ void LIVMapper::handleLIO()
     voxelmap_manager->pv_list_[i].var_nostate = sensor_cov;
     voxelmap_manager->pv_list_[i].var = full_cov;
   }
-  voxelmap_manager->UpdateVoxelMap(voxelmap_manager->pv_list_);
-  std::cout << "[ LIO ] Update Voxel Map" << std::endl;
+  if (!voxelmap_manager->map_update_blocked_)
+  {
+    voxelmap_manager->UpdateVoxelMap(voxelmap_manager->pv_list_);
+    std::cout << "[ LIO ] Update Voxel Map" << std::endl;
+  }
+  else
+  {
+    std::cout << "[ MAP-GUARD ] skipped voxel insertion under degeneracy guard" << std::endl;
+  }
   _pv_list = voxelmap_manager->pv_list_;
   
   double t4 = omp_get_wtime();
