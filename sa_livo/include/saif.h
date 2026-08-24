@@ -4,7 +4,7 @@
  * saif.h — Subspace-Aware Information Fusion (SAIF)
  *
  * SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware
- * Degeneracy Handling (arXiv:2606.25699, IEEE T-RO 2026 submission).
+ * Degeneracy Handling (arXiv:2606.25699 preprint).
  *
  * Implements Algorithm 1 of the paper:
  *   Λsum = ΛL + q·ΛV, bsum = bL + q·bV

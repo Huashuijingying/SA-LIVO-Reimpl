@@ -1,11 +1,15 @@
 # SA-LIVO (ROS2) — Strict Reproduction
 
 An open reproduction of **SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry
-with Subspace-Aware Degeneracy Handling** (arXiv:2606.25699, IEEE T-RO 2026),
+with Subspace-Aware Degeneracy Handling** (public arXiv preprint:
+arXiv:2606.25699),
 built on the FAST-LIVO2 ROS2 code base. All paper modules in Sect. IV–VII
 are implemented, and the system is evaluated on the paper's 29 benchmark
 sequences (HILTI'22 ×15, New College ×7, Oxford Spires ×7) with the official
 evaluation protocols.
+
+Publication status: this repository cites the public arXiv preprint and does
+not claim acceptance or publication in IEEE Transactions on Robotics.
 
 ## Results
 
@@ -34,14 +38,16 @@ been explored and recorded.
 If you use this reproduction, please cite the SA-LIVO paper:
 
 ```bibtex
-@article{cao2026salivo,
+@misc{cao2026salivo,
   title={SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with
          Subspace-Aware Degeneracy Handling},
-  author={Cao, Yinong and He, Xin and Chen, Yuwei and Liu, Shijie and
-          Li, Chunlai and Wang, Jianyu},
-  journal={IEEE Transactions on Robotics},
+  author={Cao, Yinong and He, Xin and Zhu, Shouzheng and Wang, Senyuan and
+          Jiang, Changhui and Zhang, Chenyang and He, Pingfeng and Wang, Tingwei and
+          Chen, Yuwei and Liu, Shijie and Li, Chunlai and Huang, Genghua and Wang, Jianyu},
   year={2026},
-  note={arXiv:2606.25699}
+  eprint={2606.25699},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO}
 }
 ```
 

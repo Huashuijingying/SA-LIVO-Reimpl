@@ -1,9 +1,13 @@
 # SA-LIVO package (ROS2)
 
 This package implements **SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry
-with Subspace-Aware Degeneracy Handling** (arXiv:2606.25699, IEEE T-RO 2026)
+with Subspace-Aware Degeneracy Handling** (public arXiv preprint:
+arXiv:2606.25699)
 on the FAST-LIVO2 ROS2 code base, as a strict reproduction of the paper's
 theory modules (Sect. IV–VII) and benchmark evaluation.
+
+Publication status: this package cites the public arXiv preprint and does not
+claim acceptance or publication in IEEE Transactions on Robotics.
 
 ## Implemented modules
 
