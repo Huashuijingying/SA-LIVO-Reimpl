@@ -5,8 +5,11 @@
 This repository is an **independent, non-official reproduction** of:
 
 - **SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware
-  Degeneracy Handling** — Y. Cao, X. He, Y. Chen, S. Liu, C. Li, J. Wang,
-  IEEE Transactions on Robotics, 2026, arXiv:2606.25699.
+  Degeneracy Handling** — Y. Cao, X. He, S. Zhu, S. Wang, C. Jiang,
+  C. Zhang, P. He, T. Wang, Y. Chen, S. Liu, C. Li, G. Huang, J. Wang,
+  public preprint arXiv:2606.25699v2, 6 August 2026. This repository does not
+  claim that the paper has been accepted or published in IEEE Transactions on
+  Robotics.
 
 It is built on the
 [integralrobotics FAST-LIVO2 ROS2 port](https://github.com/integralrobotics/FAST-LIVO2)
@@ -19,7 +22,7 @@ is included.
 
 This repository includes modified FAST-LIVO2 source files as well as new
 SA-LIVO reproduction modules, including `saif`, `sa_vio`, and
-`adaptive_voxel_map_v2`. FAST-LIVO2 copyright and license notices are retained
+`voxel_map`. FAST-LIVO2 copyright and license notices are retained
 in the inherited files. Modified inherited files now also carry dated notices
 for the ROS 2 adaptation and this reproduction's changes, as applicable.
 
@@ -90,7 +93,7 @@ legal advice.
 ## Benchmark datasets
 
 - HILTI'22: research use; see the official HILTI 2022 dataset terms.
-- New College and Oxford Spires: CC BY-NC-SA 4.0 (the authors retain all
+- Newer College Dataset and Oxford Spires: CC BY-NC-SA 4.0 (the authors retain all
   rights; this repository does not redistribute dataset files).
 
 ## Contact

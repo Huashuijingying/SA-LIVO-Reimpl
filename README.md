@@ -1,11 +1,11 @@
-# SA-LIVO (ROS2) — Strict Reproduction
+# SA-LIVO (ROS2) — Independent Reproduction and Engineering Extension
 
-An open reproduction of **SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry
-with Subspace-Aware Degeneracy Handling** (public arXiv preprint:
-arXiv:2606.25699),
-built on the FAST-LIVO2 ROS2 code base. All paper modules in Sect. IV–VII
-are implemented, and the system is evaluated on the paper's 29 benchmark
-sequences (HILTI'22 ×15, New College ×7, Oxford Spires ×7) with the official
+An independent, paper-guided reproduction and engineering extension of
+**SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware
+Degeneracy Handling** (public preprint: arXiv:2606.25699v2, 6 August 2026),
+built on the FAST-LIVO2 ROS2 code base. The repository implements the paper's
+main Sect. IV–VII architecture and evaluates it on the 29 benchmark sequences
+(HILTI'22 ×15, Newer College Dataset ×7, Oxford Spires ×7) using the stated
 evaluation protocols.
 
 Publication status: this repository cites the public arXiv preprint and does
@@ -21,7 +21,7 @@ RMSE vs. the paper's Table II "Ours" column:
 | At or near paper (≤ ~1.5×) | 24/29 |
 | At or better than the paper's FAST-LIVO2 baseline | 20/29 |
 | HILTI'22 | 13/15 |
-| New College | 6/7 |
+| Newer College Dataset | 6/7 |
 | Oxford Spires | 5/7 |
 
 See [`sa_livo/RESULTS.md`](sa_livo/RESULTS.md) for the full table and the
@@ -31,7 +31,27 @@ information-scale assembly) — all accessible parameters and mechanisms have
 been explored and recorded.
 
 > **Non-official notice**: this is an independent re-implementation based on
-> the paper and the FAST-LIVO2 code base — not the authors' official code.
+> the paper and the FAST-LIVO2 code base — not the authors' official code and
+> not a claim of source-level equivalence to either paper version.
+
+## Paper-version alignment
+
+The public v1 and v2 preprints differ materially in the LiDAR map and visual
+front end. This repository currently contains a hybrid of paper-guided and
+repository-specific behavior:
+
+| Area | Current alignment |
+|---|---|
+| State, IMU propagation, SAIF, joint InEKF | Paper-guided implementation of the core shared by v1 and v2 |
+| LiDAR map and plane association | Mixed: v1-style dual `kappa`/absolute-eigenvalue checks and full plane covariance remain alongside v2-style flat-grid sufficient statistics, query-time multi-scale support, and first-planar-scale acceptance |
+| Visual front end | Shared v1/v2 sliding-window information form; some v2 additions, including Huber weighting and image-grid selection, exist as optional paths but are not enabled in every benchmark configuration |
+| NCD Stairs | Repository extension: frontier region growing, adaptive SAIF thresholding, and a degeneracy guard are not described in v1 or v2 |
+| Benchmark results | Independent runs compared with v2 Table II; several rows use per-sequence best configurations rather than the paper's single global configuration |
+
+Accordingly, results in this repository are reproduction measurements and
+engineering experiments, not a strict v1 or strict v2 reproduction. See
+[`sa_livo/EVALUATION_TARGETS.md`](sa_livo/EVALUATION_TARGETS.md) for the
+target values, protocol, and known divergences.
 
 ## Citation
 
@@ -47,7 +67,8 @@ If you use this reproduction, please cite the SA-LIVO paper:
   year={2026},
   eprint={2606.25699},
   archivePrefix={arXiv},
-  primaryClass={cs.RO}
+  primaryClass={cs.RO},
+  note={Version 2, 6 August 2026}
 }
 ```
 
@@ -73,9 +94,11 @@ The code base this reproduction is derived from:
   window, sparse cross patches, per-frame affine brightness model, frozen
   pre-loop Jacobians, per-observation decorrelation, multi-gate filtering,
   scene-level quality factor.
-- `adaptive_voxel_map_v2` — fixed-resolution flat hash grid with per-cell
-  sufficient statistics, range-adaptive voxel sizing (Eq. 7), first-planar-
-  scale acceptance, plane-covariance bookkeeping (Eq. 9–14).
+- `voxel_map` — hybrid experimental map layer with flat-grid sufficient
+  statistics, optional legacy/adaptive paths, query-time multi-scale plane
+  support, and selectable plane-covariance models. Its switches span v1-like,
+  v2-like, and repository-specific behavior; no single setting is claimed to
+  be the authors' implementation.
 - `LIVMapper` — unified single-loop joint InEKF update (Algorithm 2) at the
   camera rate, with the FAST-LIVO2 two-event LIO+VIO cadence.
 
@@ -112,18 +135,18 @@ deterministic trajectories):
 bash datasets/hilti2022/scripts/run_hilti_direct.sh <bag.db3> <seq> <suffix>
 python3 datasets/hilti2022/scripts/eval_hilti_ape.py Log/result/<seq>_<suffix>.txt <gt>
 
-# New College / Oxford Spires: datasets/ncd, datasets/oxford_spires equivalents
+# Newer College Dataset / Oxford Spires: datasets/ncd, datasets/oxford_spires equivalents
 ```
 
 Evaluation protocol:
 - HILTI'22: official sparse-survey-point evaluator (2 s time sync, rigid
   SE(3) Umeyama alignment, translational APE).
-- New College / Oxford Spires: rigid SE(3) Umeyama alignment, translational
+- Newer College Dataset / Oxford Spires: rigid SE(3) Umeyama alignment, translational
   APE.
 
 Per-sequence best configurations and parameters are in
-[`sa_livo/config`](sa_livo/config) and the acceptance targets in
-[`sa_livo/STRICT_REPRO_TARGETS.md`](sa_livo/STRICT_REPRO_TARGETS.md).
+[`sa_livo/config`](sa_livo/config) and the evaluation targets in
+[`sa_livo/EVALUATION_TARGETS.md`](sa_livo/EVALUATION_TARGETS.md).
 
 ## License
 
@@ -157,7 +180,7 @@ dependencies until compatible replacements, permissions, or qualified legal
 review resolve these issues.
 
 Respect the rights of the SA-LIVO paper authors and the benchmark dataset
-licenses (New College / Oxford Spires data are CC BY-NC-SA 4.0). See
+licenses (Newer College Dataset / Oxford Spires data are CC BY-NC-SA 4.0). See
 [NOTICE](NOTICE.md) for the provenance, dependency inventory, source links,
 and audit scope.
 
@@ -178,7 +201,7 @@ and audit scope.
     ├── CMakeLists.txt / package.xml
     ├── README.md            package README (build/run/evaluate)
     ├── RESULTS.md           29-sequence benchmark results
-    └── STRICT_REPRO_TARGETS.md  acceptance targets & protocol
+    └── EVALUATION_TARGETS.md    targets, protocol & paper alignment
 ```
 
 ## Contributing

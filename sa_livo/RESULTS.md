@@ -1,7 +1,7 @@
 # Results — SA-LIVO reproduction vs. paper Table II
 
 Protocol: HILTI'22 uses the official sparse-survey-point evaluator (2 s time
-sync, rigid SE(3) Umeyama, translational APE); New College and Oxford Spires
+sync, rigid SE(3) Umeyama, translational APE); Newer College Dataset and Oxford Spires
 use rigid SE(3) Umeyama translational APE. All numbers verified with the
 official evaluators; estimates and ground truth are checked for pose counts
 before acceptance.
@@ -28,7 +28,7 @@ or approaches the paper's "Ours" on **24/29**.
 | HILTI | exp16 | LIO+acc2+κth0.025 | 0.0994 | 0.102 | 0.069 | ✓ | 1.44× |
 | HILTI | exp18 | pv10+i900+be0.1+κth0.03 LIO | 0.0638 | 0.194 | 0.022 | ✓ | 2.9× |
 | HILTI | exp21 | pmn full | 0.0216 | 0.036 | 0.022 | ✓ | 0.98× |
-| HILTI | exp03 (stairs) | strict full | 0.9725 | 0.415 | 0.029 | — | 33× |
+| HILTI | exp03 (stairs) | full pipeline | 0.9725 | 0.415 | 0.029 | — | 33× |
 | NCD | ug-easy | LIO+i900 | 0.0417 | 0.047 | 0.047 | ✓ | 0.89× |
 | NCD | ug-medium | LIO+i900+κth0.03 | 0.0450 | 0.043 | 0.040 | — | 1.12× |
 | NCD | quad-medium | full | 0.0651 | 0.073 | 0.068 | ✓ | 0.96× |
@@ -62,8 +62,11 @@ Notes:
 | NCD | stairs | 0.1730 | 0.036 | 4.81× | stair degeneracy; improved by frontier region-grow, plane covariance, and adaptive SAIF |
 | Spires | kc02 | 0.0464 | 0.024 | 1.93× | resistant to all parameter levers |
 
-## Acceptance target
+## Evaluation target
 
 Per-sequence targets and the fixed global parameters are defined in
-`STRICT_REPRO_TARGETS.md`. The evaluation is fail-closed: every reported
+`EVALUATION_TARGETS.md`. The evaluation is fail-closed: every reported
 number is reproduced with the official evaluator on a deterministic replay.
+The table includes per-sequence best configurations and therefore measures
+this repository's paper-guided implementation and extensions; it does not
+establish strict implementation equivalence with SA-LIVO v1 or v2.

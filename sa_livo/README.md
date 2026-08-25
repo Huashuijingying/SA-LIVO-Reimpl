@@ -1,10 +1,10 @@
 # SA-LIVO package (ROS2)
 
 This package implements **SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry
-with Subspace-Aware Degeneracy Handling** (public arXiv preprint:
-arXiv:2606.25699)
-on the FAST-LIVO2 ROS2 code base, as a strict reproduction of the paper's
-theory modules (Sect. IV–VII) and benchmark evaluation.
+with Subspace-Aware Degeneracy Handling** (public preprint:
+arXiv:2606.25699v2, 6 August 2026) on the FAST-LIVO2 ROS2 code base. It is an
+independent, paper-guided implementation and engineering extension of the
+Sect. IV–VII architecture, not a strict implementation match.
 
 Publication status: this package cites the public arXiv preprint and does not
 claim acceptance or publication in IEEE Transactions on Robotics.
@@ -19,9 +19,9 @@ claim acceptance or publication in IEEE Transactions on Robotics.
   window W=5, sparse 9-pixel cross patches, per-frame affine brightness
   model, pre-loop frozen Jacobians, per-observation decorrelation
   wdec = 1/nused, multi-gate filtering, scene-level quality factor q.
-- `adaptive_voxel_map_v2` — flat hash grid with per-cell sufficient
-  statistics, range-adaptive voxel sizing (Eq. 7), first-planar-scale
-  acceptance, and plane-covariance bookkeeping (Eq. 9–14).
+- `voxel_map` — hybrid map layer with flat-grid sufficient statistics,
+  optional legacy/adaptive paths, multi-scale support growth, and selectable
+  plane-covariance models.
 - `LIVMapper` — unified single-loop joint InEKF update (Algorithm 2) at the
   camera rate, with the FAST-LIVO2 two-event LIO+VIO cadence.
 
@@ -58,7 +58,7 @@ deterministic trajectories.
 bash datasets/hilti2022/scripts/run_hilti_direct.sh <bag.db3> <seq> <suffix>
 python3 datasets/hilti2022/scripts/eval_hilti_ape.py Log/result/<seq>_<suffix>.txt <gt>
 
-# New College
+# Newer College Dataset
 bash datasets/ncd/run_ncd_direct.sh <bag.db3> <seq> <suffix>
 python3 datasets/ncd/eval_ncd_ape.py Log/result/<seq>_<suffix>.txt <gt>
 
@@ -71,11 +71,11 @@ Evaluation protocol:
 
 - HILTI'22: official sparse-survey-point evaluator (2 s time sync, rigid
   SE(3) Umeyama alignment, translational APE).
-- New College / Oxford Spires: rigid SE(3) Umeyama alignment, translational
+- Newer College Dataset / Oxford Spires: rigid SE(3) Umeyama alignment, translational
   APE.
 
 Results on the 29 benchmark sequences: `RESULTS.md`. Acceptance targets and
-the fixed global parameters: `STRICT_REPRO_TARGETS.md`.
+the paper-alignment notes: `EVALUATION_TARGETS.md`.
 
 ## Tests
 
@@ -91,6 +91,15 @@ sensor failure.
 
 ## Reproduction notes
 
+- The implementation is not strictly aligned with either preprint version.
+  The LiDAR path retains v1-style dual planarity checks and full covariance
+  code while also implementing v2-style flat-grid sufficient statistics and
+  query-time multi-scale support. Optional visual paths cover some v2 changes.
+- The NCD Stairs configuration adds frontier region growing, adaptive SAIF
+  thresholding, and a degeneracy guard that are repository extensions rather
+  than paper methods.
+- Benchmark targets come from v2 Table II. Per-sequence best configurations
+  are reported separately from the paper's fixed-global-parameter setting.
 - The paper's 18-dim state maps onto the code base's 19-dim state (the
   exposure entry is inert in SA-LIVO mode).
 - LiDAR Jacobian follows the FAST-LIVO2 convention h = +Jᵀ (verified

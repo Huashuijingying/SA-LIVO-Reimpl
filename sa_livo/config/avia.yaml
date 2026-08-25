@@ -75,7 +75,7 @@
 
     saif:
       sigma_min: 1.0               # σmin information-amplitude threshold
-      eps_pose_inflate: 0.01       # εP post-convergence covariance inflation
+      eps_pose_inflate: 0.01       # repository default; v2 states εP=0.02
       conv_phi_deg: 0.01           # ϵϕ convergence (deg)
       conv_p_cm: 0.015             # ϵp convergence (cm)
 
@@ -95,7 +95,7 @@
       rho_max: 0.7                 # ρmax for qrej
       delta_alpha: 0.2             # δα → wcam = exp(−max(|log α|−δα, 0))
       sigma_px: 1.0                # σpx photometric noise floor
-      photometric_huber_en: false  # paper Eq.30 has no Huber
+      photometric_huber_en: false  # v1-style default; v2 adds a Huber factor
       info_scale: 1.0              # paper default; best ATE on pristine reference
       rrms_after_gates: false      # BSW: scene rrms over all projections (V4-tuned)
       point_image_cell_px: 16.0    # paper VI-B cell (used when grid switch on)

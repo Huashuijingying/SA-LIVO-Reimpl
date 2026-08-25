@@ -1,18 +1,33 @@
-# SA-LIVO (ROS2) — 非官方复现
+# SA-LIVO (ROS2) — 独立复现与工程扩展
 
 基于 FAST-LIVO2 ROS2 代码库，对 **SA-LIVO: Efficient LiDAR-Inertial-Visual
-Odometry with Subspace-Aware Degeneracy Handling**（arXiv:2606.25699，
-IEEE T-RO 2026）论文理论模块（Sect. IV–VII）的独立复现，并在论文的 29 条
-基准序列（HILTI'22 ×15、New College ×7、Oxford Spires ×7）上按官方评估
-协议完成评测。
+Odometry with Subspace-Aware Degeneracy Handling**（公开预印本
+arXiv:2606.25699v2，2026-08-06）Sect. IV–VII 主要架构进行独立、论文引导的
+实现与工程扩展，并在论文的 29 条基准序列（HILTI'22 ×15、Newer College
+Dataset ×7、Oxford Spires ×7）上按所述协议完成评测。
 
 > **非官方声明**：本仓库为基于论文与 FAST-LIVO2 代码库的独立复现，
-> 并非作者官方实现。
+> 并非作者官方实现，也不宣称与 v1 或 v2 在源码和行为上严格一致。
+
+## 论文版本对齐
+
+v1 与 v2 在 LiDAR 地图和视觉前端上存在实质差异，本仓库目前是混合实现：
+
+| 模块 | 当前对齐情况 |
+|---|---|
+| 状态、IMU、SAIF、联合 InEKF | 按论文实现 v1/v2 共有的核心设计 |
+| LiDAR 地图与平面关联 | 同时保留 v1 风格的双阈值、完整平面协方差，以及 v2 风格的固定哈希体素充分统计量、查询时多尺度支持域和首个合格平面策略 |
+| 视觉前端 | 共有的滑窗信息形式已实现；v2 的 Huber 权重、图像网格选点等作为可选路径存在，并非所有评测配置都启用 |
+| NCD Stairs | frontier region-grow、自适应 SAIF 阈值和退化保护为本仓库扩展，v1/v2 均未描述 |
+| 评测结果 | 与 v2 Table II 对比，但部分结果采用逐序列最优配置，并非论文单套全局参数实验 |
+
+因此，本仓库定位为**独立复现与工程扩展**，不是严格 v1/v2 复现。具体目标、
+协议和偏差见 [`sa_livo/EVALUATION_TARGETS.md`](sa_livo/EVALUATION_TARGETS.md)。
 
 ## 结果
 
 29/29 条序列全部跑通；24/29 达到/接近论文 Table II 水平（平移 RMSE
-≤ ~1.5×；HILTI 13/15、New College 6/7、Oxford Spires 5/7）。完整逐序列
+≤ ~1.5×；HILTI 13/15、NCD 6/7、Oxford Spires 5/7）。完整逐序列
 结果见 [`sa_livo/RESULTS.md`](sa_livo/RESULTS.md)。剩余 5 条的根因
 （光度残差模型、SA 多尺度聚合、信息尺度装配）均有文档记录。
 
@@ -21,14 +36,17 @@ IEEE T-RO 2026）论文理论模块（Sect. IV–VII）的独立复现，并在�
 使用本复现请引用 SA-LIVO 论文：
 
 ```bibtex
-@article{cao2026salivo,
+@misc{cao2026salivo,
   title={SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with
          Subspace-Aware Degeneracy Handling},
-  author={Cao, Yinong and He, Xin and Chen, Yuwei and Liu, Shijie and
-          Li, Chunlai and Wang, Jianyu},
-  journal={IEEE Transactions on Robotics},
+  author={Cao, Yinong and He, Xin and Zhu, Shouzheng and Wang, Senyuan and
+          Jiang, Changhui and Zhang, Chenyang and He, Pingfeng and Wang, Tingwei and
+          Chen, Yuwei and Liu, Shijie and Li, Chunlai and Huang, Genghua and Wang, Jianyu},
   year={2026},
-  note={arXiv:2606.25699}
+  eprint={2606.25699},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO},
+  note={Version 2, 6 August 2026}
 }
 ```
 
@@ -76,7 +94,7 @@ colcon build --packages-select sa_livo --symlink-install \
 bash datasets/hilti2022/scripts/run_hilti_direct.sh <bag.db3> <seq> <suffix>
 python3 datasets/hilti2022/scripts/eval_hilti_ape.py Log/result/<seq>_<suffix>.txt <gt>
 
-# New College / Oxford Spires：datasets/ncd、datasets/oxford_spires 对应脚本
+# Newer College Dataset / Oxford Spires：datasets/ncd、datasets/oxford_spires 对应脚本
 ```
 
 评估协议：HILTI 使用官方 sparse-survey-point 评估器（2 s 时间同步、刚性
@@ -110,7 +128,7 @@ GPL-2.0-only 代码组合后再分发时存在不兼容。采用 Apache-2.0 的 
 本仓库目前仅发布源码；在通过兼容替代、额外授权或合格法律审查解决前，
 请勿分发组合上述依赖后编译出的可执行文件、二进制包或容器镜像。
 
-请尊重 SA-LIVO 论文作者权益以及基准数据集许可（New College / Oxford
+请尊重 SA-LIVO 论文作者权益以及基准数据集许可（Newer College Dataset / Oxford
 Spires 为 CC BY-NC-SA 4.0）。完整来源、依赖链接、兼容性状态与审计范围见
 [NOTICE](NOTICE.md)。
 

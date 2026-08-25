@@ -1,12 +1,11 @@
-# Pull Request — SA-LIVO strict reproduction (29/29 sequences, 24/29 at paper)
+# Pull Request — SA-LIVO independent reproduction (29/29 sequences, 24/29 near paper)
 
 ## Summary
 
-Completes a strict, reproducible implementation of SA-LIVO
-(arXiv:2606.25699, IEEE T-RO 2026) on the FAST-LIVO2 ROS2 code base:
-all theory modules (Sect. IV–VII), the paper's 29 benchmark sequences with
-official evaluation protocols, and a documented acceptance target per
-sequence.
+Provides an independent, paper-guided implementation and engineering
+extension of SA-LIVO (arXiv:2606.25699v2, public preprint) on the FAST-LIVO2
+ROS2 code base: the main Sect. IV–VII architecture, all 29 benchmark sequences
+with the stated evaluation protocols, and documented targets per sequence.
 
 ## What's included
 
@@ -26,7 +25,7 @@ sequence.
 |---|---:|
 | At/near paper (≤ ~1.5×) | 24/29 |
 | HILTI'22 | 13/15 |
-| New College | 6/7 |
+| Newer College Dataset | 6/7 |
 | Oxford Spires | 5/7 |
 
 Full per-sequence table: `sa_livo/RESULTS.md`.
@@ -37,7 +36,7 @@ Full per-sequence table: `sa_livo/RESULTS.md`.
   divergence to bounded operation, with several sequences reaching
   near-paper accuracy via LIO-only operation, initialization-window and
   noise-model tuning, and planarity-gate calibration.
-- New College underground-hard (previously blocked by the dataset's Drive
+- NCD underground-hard (previously blocked by the dataset's Drive
   quota) now runs and meets the paper target (1.06×).
 
 ## Build & verify
@@ -47,7 +46,11 @@ evaluators).
 
 ## Known limitations
 
-The five sequences still above 1.5× (HILTI exp03/exp18, New College
+The implementation combines behavior described in v1 and v2 with
+repository-specific extensions. It is not the authors' code and does not
+claim strict source- or behavior-level equivalence to either preprint version.
+
+The five sequences still above 1.5× (HILTI exp03/exp18, NCD
 quad-easy/stairs, Spires kc02) are traced to paper-internal implementation
 details (photometric-residual model, SA multi-scale aggregation, information
 scale assembly). All parameter-level hypotheses have been explored and are

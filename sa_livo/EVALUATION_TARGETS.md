@@ -1,13 +1,37 @@
-# SA-LIVO Reproduction: Quantitative Targets and Evaluation Protocol
+# SA-LIVO Reproduction: Evaluation Targets and Paper Alignment
 
-This document defines the quantitative acceptance targets and evaluation
-protocol for this SA-LIVO reproduction:
+This document defines the quantitative comparison targets and evaluation
+protocol for this independent SA-LIVO reproduction and engineering extension.
+The values are taken from arXiv:2606.25699v2 Table II; the paper's "Ours"
+values are unchanged from v1 for these 29 sequences.
 
-- All theory modules of the SA-LIVO paper (Sect. IV–VII) are implemented.
-- All 29 "Ours" benchmark sequences are covered: HILTI'22 (15), New College
-  (7), Oxford Spires (7).
+- The main Sect. IV–VII architecture is implemented on the FAST-LIVO2 ROS2
+  base, without claiming source-level equivalence to the authors' code.
+- All 29 "Ours" benchmark sequences are covered: HILTI'22 (15), Newer College
+  Dataset (7), Oxford Spires (7).
 - Baselines are restricted to FAST-LIVO2 (other comparison methods from the
   paper are not run here).
+
+## 0. 论文版本对齐范围
+
+本仓库当前不是严格的 v1 或 v2 实现：
+
+- 状态、IMU 传播、SAIF 与联合 InEKF 对齐 v1/v2 共有的核心设计。
+- LiDAR 地图是混合实现：保留 v1 风格的 `kappa` 与绝对特征值双重判定、
+  完整平面协方差等路径，同时包含 v2 风格的固定哈希体素充分统计量、查询时
+  多尺度支持域与首个合格平面策略。
+- 视觉前端实现了 v1/v2 共有的信息形式；v2 的 Huber 权重、图像网格选点等
+  以可选路径存在，但并非所有评测配置均启用。
+- NCD Stairs 的 frontier region-grow、自适应 SAIF 阈值和退化保护属于本仓库
+  工程扩展，两个论文版本均未描述。
+- 下表包含逐序列最优配置结果，不等价于论文要求的单套全局参数实验。
+
+因此，本文档中的“目标”是结果比较基准，不是严格复现验收声明。
+
+当前默认评测配置与 v2 的已知直接差异还包括：`min_eigen_abs=0.01`
+仍参与平面判定，`eps_pose_inflate=0.01` 而非 v2 的 `0.02`，且
+`photometric_huber_en` 与 `point_select_image_grid` 默认关闭。这些开关和
+逐序列配置是本仓库实验设计的一部分，不能视为 v2 默认实现。
 
 ## 1. 目标：论文 Table II “Ours” 绝对平移 RMSE（m）
 
@@ -33,7 +57,7 @@ protocol for this SA-LIVO reproduction:
 | exp18 corridor lower gallery 2 | 0.022 |
 | exp21 outside building | 0.022 |
 
-### New College (NCD)
+### Newer College Dataset (NCD)
 
 | 序列 | 论文 Ours (m) |
 |---|---:|
@@ -78,18 +102,21 @@ protocol for this SA-LIVO reproduction:
 - sigma_min = 1。
 - sigma_px = 1（视觉噪声底）。
 - kappa_th = 0.05；epsilon0 = 1e-3。
+- tau_L ≈ 25（v2 标为数据集调定的近似值）。
 - rho_d = 4 px；delta_d = 0.5 m；theta_max = 80 deg。
 - patch spacing sp = 8 -> rho = 3 px。
 - delta_rms = 12；sigma_rms = 8（q_rms 阈值）。
-- N_PCA = 25（多尺度 PCA 采样上限，实际以统计量 cap 实现）。
+- N_PCA = 25（累计支持点数达到该值后才开始执行多尺度 PCA）。
 - K_max = 5（联合 InEKF 迭代上限）。
+- epsilon_P = 0.02（v2 明确给出的收敛后位姿协方差膨胀系数）。
 
-其余未给出数值的参数（tau_L、tau_V、epsilon_min、epsilon_P、Ncap、Nobs、
-Nmin、sigma_r/sigma_theta、parallax/delta_abs/delta_alpha、rho_min/rho_max、
+v2 的平面接受仅使用 `kappa < kappa_th`，不再联合固定 `epsilon_min`。
+其余未给出数值的参数（tau_V、Ncap、Nobs、
+Nq、sigma_r/sigma_theta、parallax/delta_abs/delta_alpha、eta_min/eta_max、
 delta_R/delta_t）必须在“所有序列共用一套固定值”的前提下，通过复现实验
 回溯到能逼近 Table II 的取值；不允许 per-sequence 调参。
 
-## 4. 验收口径 / Acceptance
+## 4. 报告口径 / Reporting
 
 - Per-sequence APE RMSE is reported against the Table II "Ours" column.
 - The paper-fidelity criterion is a single set of global parameters across

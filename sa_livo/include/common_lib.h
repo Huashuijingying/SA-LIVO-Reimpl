@@ -47,7 +47,7 @@ using namespace Sophus;
 // FAST-LIVO2 base uses the LEFT-invariant convention (R = R_hat Exp(delta_phi)).
 // This flag switches the retraction, the IMU error propagation and the
 // LiDAR/visual Jacobians consistently.  Default false keeps the proven
-// FAST-LIVO2 behaviour; the paper-faithful path is enabled per run.
+// FAST-LIVO2 behaviour; the paper-guided right-invariant path is enabled per run.
 inline bool g_right_invariant_en = false;
 
 enum LID_TYPE

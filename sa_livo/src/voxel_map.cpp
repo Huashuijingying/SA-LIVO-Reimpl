@@ -1530,8 +1530,8 @@ void VoxelMapManager::BuildResidualListOMP(std::vector<pointWithVar> &pv_list, s
     if (config_setting_.baseline_lio_association_en_)
     {
       // Diagnostic: original FAST-LIVO2 octree association (voxel + near-voxel
-      // fallback). Kept behind a switch so the paper-faithful v2 flat-grid and
-      // the SA octree selection remain the defaults.
+      // fallback). Kept behind a switch so the paper-guided flat-grid and the
+      // SA octree selection remain available as experimental paths.
       const double voxel_size_q =
           config_setting_.adaptive_voxel_en_ ? voxelSizeForPoint(pv.point_b) : voxel_size;
       float loc_xyz[3];
