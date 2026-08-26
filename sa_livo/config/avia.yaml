@@ -7,6 +7,9 @@
       img_topic: "/left_camera/image"
       lid_topic: "/livox/lidar"
       imu_topic: "/livox/imu"
+      # Empty selects live ROS2 subscriptions; direct bag replay is opt-in.
+      direct_bag_path: ""
+      lossless_replay_qos: false
       img_en: 1
       lidar_en: 1
       ros_driver_bug_fix: false

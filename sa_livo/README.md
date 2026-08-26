@@ -47,6 +47,31 @@ Workspace dependencies: [`livox_ros_driver2`](https://github.com/Livox-SDK/livox
 make them available from the same workspace `src/` directory or from a sourced
 underlay.
 
+## Real-time ROS2 replay
+
+The default AVIA launch uses live ROS2 subscriptions. Start the mapper and
+the bag player in separate terminals:
+
+```bash
+# Terminal 1
+source /opt/ros/humble/setup.bash
+source ~/sa_livo_ws/install/setup.bash
+ros2 launch sa_livo mapping_avia.launch.py use_rviz:=true
+
+# Terminal 2
+source /opt/ros/humble/setup.bash
+source ~/sa_livo_ws/install/setup.bash
+ros2 bag play /absolute/path/to/YOUR_DOWNLOADED_BAG --rate 1.0
+```
+
+The AVIA defaults subscribe to `/livox/lidar`, `/livox/imu`, and
+`/left_camera/image`. Use `ros2 bag info` to verify the bag topics and message
+types. For different topic names, pass a parameter overlay with
+`avia_params_file:=...`. Live subscriptions use Best Effort QoS by default;
+leave `common.lossless_replay_qos` disabled for this workflow. Leave
+`common.direct_bag_path` empty for live use; setting it opts into the
+deterministic in-process evaluator path.
+
 ## Run & evaluate
 
 The system replays ROS2 db3 bags deterministically in-process (10 Hz image

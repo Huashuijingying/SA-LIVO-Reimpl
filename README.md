@@ -124,6 +124,64 @@ Workspace dependencies: [`livox_ros_driver2`](https://github.com/Livox-SDK/livox
 make them available from the same workspace `src/` directory or from a sourced
 underlay.
 
+## Real-time ROS2 replay
+
+The default AVIA launch runs in live subscription mode. It is the ROS2
+equivalent of the FAST-LIVO2 workflow with one terminal for the mapper and one
+terminal for bag playback. The AVIA defaults expect these topics:
+`/livox/lidar`, `/livox/imu`, and `/left_camera/image`.
+
+```bash
+# Terminal 1: start SA-LIVO
+source /opt/ros/humble/setup.bash
+source ~/sa_livo_ws/install/setup.bash
+ros2 launch sa_livo mapping_avia.launch.py use_rviz:=true
+
+# Terminal 2: replay a ROS2 bag in real time
+source /opt/ros/humble/setup.bash
+source ~/sa_livo_ws/install/setup.bash
+ros2 bag play /absolute/path/to/YOUR_DOWNLOADED_BAG --rate 1.0
+```
+
+This mode uses DDS topic subscriptions and processes messages as they are
+published by `ros2 bag play`; it does not use the deterministic in-process
+reader. Check the bag's topic names and message types with
+`ros2 bag info /absolute/path/to/YOUR_DOWNLOADED_BAG`. If they differ from the
+AVIA defaults, provide a parameter overlay through `avia_params_file:=...`.
+Live sensor subscriptions use a large Best Effort queue by default for
+compatibility with common LiDAR, IMU, and camera publishers. Keep
+`lossless_replay_qos` disabled for this real-time workflow.
+The bag must be a ROS2 bag supported by the installed storage plugin; a ROS1
+`.bag` file must be converted before use.
+
+### FAST-LIVO2 dataset example
+
+The downloaded FAST-LIVO2 files are stored under
+`/media/zxy/DATA/rosbag_DIR/FAST-LIVO2-Dataset`. The original
+`Bright_Screen_Wall.bag` is a ROS1 bag; use the converted ROS2 bag for the
+SA-LIVO real-time workflow:
+
+```bash
+# Terminal 1: start SA-LIVO
+source /opt/ros/humble/setup.bash
+source /home/zxy/slam/fast_livo_ws/install/setup.bash
+ros2 launch sa_livo mapping_avia.launch.py use_rviz:=true
+
+# Terminal 2: replay Bright_Screen_Wall in real time
+source /opt/ros/humble/setup.bash
+source /home/zxy/slam/fast_livo_ws/install/setup.bash
+ros2 bag play \
+  /media/zxy/DATA/rosbag_DIR/FAST-LIVO2-Dataset/Bright_Screen_Wall_ros2 \
+  --rate 1.0
+```
+
+The converted bag contains `/livox/imu`, `/livox/lidar`, and
+`/left_camera/image/compressed`, and its LiDAR type is mapped to
+`livox_ros_driver2/msg/CustomMsg`.
+
+The direct in-process reader remains available for deterministic benchmark
+evaluation and is selected only when `common.direct_bag_path` is set.
+
 ## Run & evaluate
 
 Datasets are replayed deterministically in-process (ROS2 db3 bags, 10 Hz

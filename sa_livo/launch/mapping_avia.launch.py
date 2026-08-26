@@ -6,7 +6,7 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
@@ -32,13 +32,13 @@ def generate_launch_description():
     avia_config_arg = DeclareLaunchArgument(
         'avia_params_file',
         default_value=avia_config_cmd,
-        description='Full path to the ROS2 parameters file to use for fast_livo2 nodes',
+        description='Full path to the sa_livo ROS2 parameters file',
     )
 
     camera_config_arg = DeclareLaunchArgument(
         'camera_params_file',
         default_value=camera_config_cmd,
-        description='Full path to the ROS2 parameters file to use for vikit_ros nodes',
+        description='Full path to the camera calibration parameters file',
     )
 
     # https://github.com/ros-navigation/navigation2/blob/1c68c212db01f9f75fcb8263a0fbb5dfa711bdea/nav2_bringup/launch/navigation_launch.py#L40
@@ -57,15 +57,14 @@ def generate_launch_description():
         camera_config_arg,
         use_respawn_arg,
 
-        # play ros2 bag
-        # ExecuteProcess(
-        #     cmd=[['ros2 bag play ', '~/datasets/Retail_Street ', '--clock ', "-l"]], 
-        #     shell=True
-        # ),
+        # Live replay is intentionally external to this launch file:
+        #   ros2 bag play /path/to/your_ros2_bag
+        # The default empty common.direct_bag_path selects ROS2 subscriptions.
 
         # republish compressed image to raw image
         # https://robotics.stackexchange.com/questions/110939/how-do-i-remap-compressed-video-to-raw-video-in-ros2
-        # ros2 run image_transport republish compressed raw --ros-args --remap in:=/left_camera/image --remap out:=/left_camera/image
+        # The compressed plugin subscribes to the in/compressed child topic.
+        # ros2 run image_transport republish compressed raw --ros-args --remap in/compressed:=/left_camera/image/compressed --remap out:=/left_camera/image
         Node(
             package="image_transport",
             executable="republish",
@@ -75,7 +74,7 @@ def generate_launch_description():
                 'raw',
             ],
             remappings=[
-                ("in",  "/left_camera/image"), 
+                ("in/compressed", "/left_camera/image/compressed"),
                 ("out", "/left_camera/image")
             ],
             output="screen",

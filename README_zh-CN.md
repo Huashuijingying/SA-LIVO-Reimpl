@@ -84,6 +84,60 @@ colcon build --packages-select sa_livo --symlink-install \
 [`rpg_vikit`（ROS 2 适配版）](https://github.com/WilsonGuo/Fast-LIVO2-Drvier-ROS2/tree/main/rpg_vikit)；
 可放在同一工作区的 `src/` 下，也可由已 source 的 underlay 提供。
 
+## ROS2 实时回放
+
+默认 AVIA 启动文件运行在实时订阅模式下，使用方式与 FAST-LIVO2 的“两终端”
+流程一致。AVIA 默认订阅以下话题：`/livox/lidar`、`/livox/imu` 和
+`/left_camera/image`。
+
+```bash
+# 终端 1：启动 SA-LIVO
+source /opt/ros/humble/setup.bash
+source ~/sa_livo_ws/install/setup.bash
+ros2 launch sa_livo mapping_avia.launch.py use_rviz:=true
+
+# 终端 2：按实时速度回放 ROS2 bag
+source /opt/ros/humble/setup.bash
+source ~/sa_livo_ws/install/setup.bash
+ros2 bag play /absolute/path/to/YOUR_DOWNLOADED_BAG --rate 1.0
+```
+
+该模式通过 DDS 话题订阅接收 `ros2 bag play` 发布的消息，不使用确定性进程内
+读取器。可用 `ros2 bag info /absolute/path/to/YOUR_DOWNLOADED_BAG` 检查 bag
+中的话题名称和消息类型。如果与 AVIA 默认话题不同，请通过
+`avia_params_file:=...` 提供参数覆盖文件。实时传感器订阅默认使用大容量
+Best Effort 队列，以兼容常见的 LiDAR、IMU 和相机发布器；实时运行时保持
+`lossless_replay_qos` 关闭。输入必须是当前 ROS2 存储插件支持的 ROS2 bag；
+ROS1 的 `.bag` 文件需要先转换。
+
+### FAST-LIVO2 数据集示例
+
+下载的 FAST-LIVO2 文件位于
+`/media/zxy/DATA/rosbag_DIR/FAST-LIVO2-Dataset`。其中原始的
+`Bright_Screen_Wall.bag` 是 ROS1 bag；使用转换后的 ROS2 bag 进行 SA-LIVO
+实时测试：
+
+```bash
+# 终端 1：启动 SA-LIVO
+source /opt/ros/humble/setup.bash
+source /home/zxy/slam/fast_livo_ws/install/setup.bash
+ros2 launch sa_livo mapping_avia.launch.py use_rviz:=true
+
+# 终端 2：按实时速度回放 Bright_Screen_Wall
+source /opt/ros/humble/setup.bash
+source /home/zxy/slam/fast_livo_ws/install/setup.bash
+ros2 bag play \
+  /media/zxy/DATA/rosbag_DIR/FAST-LIVO2-Dataset/Bright_Screen_Wall_ros2 \
+  --rate 1.0
+```
+
+转换后的 bag 包含 `/livox/imu`、`/livox/lidar` 和
+`/left_camera/image/compressed`，其中 LiDAR 消息类型已映射为
+`livox_ros_driver2/msg/CustomMsg`。
+
+用于确定性基准评测的进程内读取器仍然保留，只有设置
+`common.direct_bag_path` 时才会启用。
+
 ## 运行与评估
 
 系统在进程内确定性回放 ROS2 db3 bag（图像 10 Hz 子采样）。**必须串行

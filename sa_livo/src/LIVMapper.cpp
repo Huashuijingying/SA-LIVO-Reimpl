@@ -491,12 +491,19 @@ void LIVMapper::initializeFiles()
 void LIVMapper::initializeSubscribersAndPublishers(rclcpp::Node::SharedPtr &node, image_transport::ImageTransport &it_)
 {
   image_transport::ImageTransport it(this->node);
+  // Sensor drivers and ros2 bag play commonly offer BEST_EFFORT.  Use a large
+  // best-effort queue for live mode so the subscriptions are QoS-compatible
+  // without making the mapper wait on stale sensor data.  Lossless replay is
+  // opt-in for controlled offline publishers.
+  const auto sensor_qos = lossless_replay_qos
+                              ? rclcpp::QoS(rclcpp::KeepAll()).reliable().durability_volatile()
+                              : rclcpp::QoS(rclcpp::KeepLast(200000)).best_effort().durability_volatile();
   if (p_pre->lidar_type == AVIA) {
-    sub_pcl = this->node->create_subscription<livox_ros_driver2::msg::CustomMsg>(lid_topic, 200000, std::bind(&LIVMapper::livox_pcl_cbk, this, std::placeholders::_1));
+    sub_pcl = this->node->create_subscription<livox_ros_driver2::msg::CustomMsg>(lid_topic, sensor_qos, std::bind(&LIVMapper::livox_pcl_cbk, this, std::placeholders::_1));
   } else {
-    sub_pcl = this->node->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, 200000, std::bind(&LIVMapper::standard_pcl_cbk, this, std::placeholders::_1));
+    sub_pcl = this->node->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, sensor_qos, std::bind(&LIVMapper::standard_pcl_cbk, this, std::placeholders::_1));
   }
-  sub_imu = this->node->create_subscription<sensor_msgs::msg::Imu>(imu_topic, 200000, std::bind(&LIVMapper::imu_cbk, this, std::placeholders::_1));
+  sub_imu = this->node->create_subscription<sensor_msgs::msg::Imu>(imu_topic, sensor_qos, std::bind(&LIVMapper::imu_cbk, this, std::placeholders::_1));
   if (lossless_replay_qos)
   {
     // Deterministic merged-bag replay: publisher and subscriber are both
@@ -533,7 +540,9 @@ void LIVMapper::initializeSubscribersAndPublishers(rclcpp::Node::SharedPtr &node
 
   if (!img2_topic_.empty())
   {
-    auto image_qos = rclcpp::QoS(rclcpp::KeepAll()).reliable().durability_volatile();
+    const auto image_qos = lossless_replay_qos
+                               ? rclcpp::QoS(rclcpp::KeepAll()).reliable().durability_volatile()
+                               : rclcpp::QoS(rclcpp::KeepLast(200000)).best_effort().durability_volatile();
     sub_img2 = this->node->create_subscription<sensor_msgs::msg::Image>(
         img2_topic_, image_qos, std::bind(&LIVMapper::img2_cbk, this, std::placeholders::_1));
   }
