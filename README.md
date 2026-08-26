@@ -1,5 +1,7 @@
 # SA-LIVO (ROS2) — Independent Reproduction and Engineering Extension
 
+[中文版](README_zh-CN.md)
+
 An independent, paper-guided reproduction and engineering extension of
 **SA-LIVO: Efficient LiDAR-Inertial-Visual Odometry with Subspace-Aware
 Degeneracy Handling** (public preprint: arXiv:2606.25699v2, 6 August 2026),
