@@ -198,6 +198,20 @@ python3 datasets/hilti2022/scripts/eval_hilti_ape.py Log/result/<seq>_<suffix>.t
 # Newer College Dataset / Oxford Spires: datasets/ncd, datasets/oxford_spires equivalents
 ```
 
+To generate raw PCD files serially, run one dataset script at a time:
+
+```bash
+bash datasets/hilti2022/scripts/gen_pcd_serial.sh
+bash datasets/ncd/gen_ncd_pcd_serial.sh
+bash datasets/oxford_spires/scripts/gen_spires_pcd_serial.sh
+```
+
+The generators expect the corresponding ROS2 bags under `datasets/` and save
+the trajectory/PCD outputs under `sa_livo/Log/`. See the scripts:
+[HILTI PCD generator](datasets/hilti2022/scripts/gen_pcd_serial.sh),
+[NCD PCD generator](datasets/ncd/gen_ncd_pcd_serial.sh), and
+[Oxford Spires PCD generator](datasets/oxford_spires/scripts/gen_spires_pcd_serial.sh).
+
 Evaluation protocol:
 - HILTI'22: official sparse-survey-point evaluator (2 s time sync, rigid
   SE(3) Umeyama alignment, translational APE).

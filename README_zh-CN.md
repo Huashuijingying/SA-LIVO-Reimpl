@@ -151,6 +151,19 @@ python3 datasets/hilti2022/scripts/eval_hilti_ape.py Log/result/<seq>_<suffix>.t
 # Newer College Dataset / Oxford Spires：datasets/ncd、datasets/oxford_spires 对应脚本
 ```
 
+如需串行生成原始 PCD，请一次只运行一套数据集脚本：
+
+```bash
+bash datasets/hilti2022/scripts/gen_pcd_serial.sh
+bash datasets/ncd/gen_ncd_pcd_serial.sh
+bash datasets/oxford_spires/scripts/gen_spires_pcd_serial.sh
+```
+
+脚本要求对应 ROS2 bag 位于 `datasets/` 下，并将轨迹和 PCD 输出到
+`sa_livo/Log/`。脚本链接：[HILTI PCD 生成](datasets/hilti2022/scripts/gen_pcd_serial.sh)、
+[NCD PCD 生成](datasets/ncd/gen_ncd_pcd_serial.sh)、
+[Oxford Spires PCD 生成](datasets/oxford_spires/scripts/gen_spires_pcd_serial.sh)。
+
 评估协议：HILTI 使用官方 sparse-survey-point 评估器（2 s 时间同步、刚性
 SE(3) Umeyama 对齐、平移 APE）；NCD/Spires 为刚性 SE(3) Umeyama 平移 APE。
 
