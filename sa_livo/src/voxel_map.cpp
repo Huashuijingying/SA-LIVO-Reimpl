@@ -1472,20 +1472,33 @@ void VoxelMapManager::updateCoarseMap(const std::vector<pointWithVar> &input_poi
 
 void VoxelMapManager::BuildResidualListOMP(std::vector<pointWithVar> &pv_list, std::vector<PointToPlane> &ptpl_list)
 {
+#ifdef MP_EN
+  // Respect an explicitly smaller OMP_NUM_THREADS while keeping the build's
+  // worker limit. The adaptive path previously bypassed MP_PROC_NUM entirely.
+  const int thread_count = std::min(MP_PROC_NUM, omp_get_max_threads());
+#else
+  const int thread_count = 1;
+#endif
   if (config_setting_.adaptive_support_en_)
   {
     ptpl_list.clear();
     plane_cache_.assign(pv_list.size(), CachedPlane());
     std::vector<PointToPlane> all_ptpl_list(pv_list.size());
     std::vector<std::uint8_t> useful_ptpl(pv_list.size(), 0U);
+    std::vector<AdaptiveVoxelGrid::QueryCache> query_caches(thread_count);
 #ifdef MP_EN
-#pragma omp parallel for
+#pragma omp parallel for num_threads(thread_count)
 #endif
     for (int i = 0; i < static_cast<int>(pv_list.size()); ++i)
     {
       bool success = false;
       PointToPlane point_to_plane;
-      build_single_residual_v2(pv_list[static_cast<std::size_t>(i)], success, point_to_plane);
+      int worker = 0;
+#ifdef MP_EN
+      worker = omp_get_thread_num();
+#endif
+      build_single_residual_v2(pv_list[static_cast<std::size_t>(i)], success, point_to_plane,
+                               &query_caches[worker]);
       if (!success) continue;
       useful_ptpl[static_cast<std::size_t>(i)] = 1U;
       all_ptpl_list[static_cast<std::size_t>(i)] = point_to_plane;
@@ -1519,8 +1532,7 @@ void VoxelMapManager::BuildResidualListOMP(std::vector<pointWithVar> &pv_list, s
     useful_ptpl[i] = false;
   }
   #ifdef MP_EN
-    omp_set_num_threads(MP_PROC_NUM);
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(thread_count)
   #endif
   for (int i = 0; i < (int)index.size(); i++)
   {
@@ -1614,11 +1626,12 @@ void VoxelMapManager::BuildResidualListOMP(std::vector<pointWithVar> &pv_list, s
 }
 
 void VoxelMapManager::build_single_residual_v2(pointWithVar &pv, bool &is_success,
-                                                PointToPlane &single_ptpl)
+                                                PointToPlane &single_ptpl,
+                                                AdaptiveVoxelGrid::QueryCache *query_cache)
 {
   is_success = false;
   AdaptivePlaneFit fit;
-  if (!adaptive_map_->queryPlane(pv.point_w, pv.var, fit)) return;
+  if (!adaptive_map_->queryPlane(pv.point_w, pv.var, fit, query_cache)) return;
 
   single_ptpl.point_b_ = pv.point_b;
   single_ptpl.point_w_ = pv.point_w;

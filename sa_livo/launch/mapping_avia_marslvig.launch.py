@@ -92,6 +92,7 @@ def generate_launch_description():
             package="sa_livo",
             executable="fastlivo_mapping",
             name="laserMapping",
+            additional_env={"OMP_WAIT_POLICY": os.environ.get("OMP_WAIT_POLICY", "PASSIVE")},
             parameters=[
                 avia_params_file,
             ],

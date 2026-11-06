@@ -85,6 +85,8 @@ def generate_launch_description():
             package="sa_livo",
             executable="fastlivo_mapping",
             name="laserMapping",
+            # Sleep idle OpenMP workers; preserve an explicit user policy.
+            additional_env={"OMP_WAIT_POLICY": os.environ.get("OMP_WAIT_POLICY", "PASSIVE")},
             parameters=[
                 avia_params_file,
                 camera_params_file,

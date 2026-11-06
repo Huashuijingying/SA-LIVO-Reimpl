@@ -233,11 +233,13 @@ if(BUILD_TESTING)
   add_executable(adaptive_voxel_map_v2_test tests/adaptive_voxel_map_v2_test.cpp)
   target_include_directories(adaptive_voxel_map_v2_test PRIVATE include ${EIGEN3_INCLUDE_DIRS})
   target_link_libraries(adaptive_voxel_map_v2_test OpenMP::OpenMP_CXX)
+  target_compile_options(adaptive_voxel_map_v2_test PRIVATE -UNDEBUG)
   add_test(NAME adaptive_voxel_map_v2_test COMMAND adaptive_voxel_map_v2_test)
 
   add_executable(saif_test tests/saif_test.cpp)
   target_include_directories(saif_test PRIVATE include ${EIGEN3_INCLUDE_DIRS})
   target_link_libraries(saif_test saif OpenMP::OpenMP_CXX)
+  target_compile_options(saif_test PRIVATE -UNDEBUG)
   add_test(NAME saif_test COMMAND saif_test)
 endif()
 

@@ -105,8 +105,8 @@ ros2 bag play /absolute/path/to/YOUR_DOWNLOADED_BAG --rate 1.0
 该模式通过 DDS 话题订阅接收 `ros2 bag play` 发布的消息，不使用确定性进程内
 读取器。可用 `ros2 bag info /absolute/path/to/YOUR_DOWNLOADED_BAG` 检查 bag
 中的话题名称和消息类型。如果与 AVIA 默认话题不同，请通过
-`avia_params_file:=...` 提供参数覆盖文件。实时传感器订阅默认使用大容量
-Best Effort 队列，以兼容常见的 LiDAR、IMU 和相机发布器；实时运行时保持
+`avia_params_file:=...` 提供参数覆盖文件。LiDAR/IMU 默认使用大容量
+Best Effort 队列，相机使用 SensorDataQoS；实时运行时保持
 `lossless_replay_qos` 关闭。输入必须是当前 ROS2 存储插件支持的 ROS2 bag；
 ROS1 的 `.bag` 文件需要先转换。
 
@@ -137,6 +137,32 @@ ros2 bag play \
 
 用于确定性基准评测的进程内读取器仍然保留，只有设置
 `common.direct_bag_path` 时才会启用。
+
+### CPU 与缓冲
+
+自适应平面关联在同一地图版本内复用几何拟合，逐点协方差及关联门限仍单独
+计算。OpenMP 工作线程数遵循 `OMP_NUM_THREADS`，并受构建上限约束（通常为 4）。
+启动文件默认给建图进程设置 `OMP_WAIT_POLICY=PASSIVE`，减少空闲线程自旋；
+用户显式导出的策略会保留。直接启动可执行文件时，请在启动前导出该环境变量。
+
+`common.img_buffer_max` 默认 60 帧，设为 `0` 取消上限。实时回调不等待缓冲：
+过载时淘汰最旧图像及对应时间戳，输出限频警告，结束时报告 `live_image_drops`
+和 `peak_image_buffer`。进程内 bag 读取器在独立输入线程施加背压，保留全部
+消息。完整离线评测应使用 `common.direct_bag_path`；可靠 DDS QoS 本身不会
+关闭实时缓冲淘汰，也不能保证播放器退出前所有消息已送达。比较 CPU、内存或
+精度前，应核对输入计数和轨迹末尾。Best Effort 传输还可能在进入回调前丢失
+消息，这与应用内缓冲淘汰是不同的计数。
+
+使用 `-DBUILD_TESTING=ON` 构建并运行 `ctest --test-dir <build/sa_livo>`。
+突发输入与背压回归测试需要一份兼容的短原始图像 ROS2 bag（例如
+Bright_Screen_Wall 前五秒）：
+
+```bash
+python3 sa_livo/tests/replay_backpressure_test.py \
+  --binary /absolute/path/to/fastlivo_mapping \
+  --params sa_livo/config/avia.yaml --camera sa_livo/config/camera_pinhole.yaml \
+  --bag /absolute/path/to/short_ros2_bag --output /tmp/sa_livo_backpressure
+```
 
 ## 运行与评估
 

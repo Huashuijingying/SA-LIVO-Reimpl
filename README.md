@@ -150,8 +150,8 @@ published by `ros2 bag play`; it does not use the deterministic in-process
 reader. Check the bag's topic names and message types with
 `ros2 bag info /absolute/path/to/YOUR_DOWNLOADED_BAG`. If they differ from the
 AVIA defaults, provide a parameter overlay through `avia_params_file:=...`.
-Live sensor subscriptions use a large Best Effort queue by default for
-compatibility with common LiDAR, IMU, and camera publishers. Keep
+LiDAR/IMU subscriptions use a large Best Effort queue; live images use
+SensorDataQoS for compatibility with sensor publishers. Keep
 `lossless_replay_qos` disabled for this real-time workflow.
 The bag must be a ROS2 bag supported by the installed storage plugin; a ROS1
 `.bag` file must be converted before use.
@@ -183,6 +183,37 @@ The converted bag contains `/livox/imu`, `/livox/lidar`, and
 
 The direct in-process reader remains available for deterministic benchmark
 evaluation and is selected only when `common.direct_bag_path` is set.
+
+### CPU and buffering
+
+Adaptive plane association reuses geometry within a read-only map revision,
+while retaining each point's covariance and association gates. Its OpenMP
+worker count respects `OMP_NUM_THREADS` up to the build limit (normally 4).
+The supplied launch files default the mapper to `OMP_WAIT_POLICY=PASSIVE` to
+reduce worker spin time; an explicitly exported policy is preserved. When
+starting the executable directly, export that policy before starting it.
+
+`common.img_buffer_max` defaults to 60 images (`0` disables the limit).
+Live callbacks never wait for buffer space: overload evicts the oldest image
+and matching timestamp, with throttled warnings and final
+`live_image_drops` / `peak_image_buffer` diagnostics. Direct bag replay
+applies backpressure in its separate input thread and retains all messages.
+For complete offline evaluation use `common.direct_bag_path`; reliable DDS
+QoS alone does not disable live buffer eviction or guarantee full delivery
+before a bag player exits. Check input counts and the last trajectory stamp
+before comparing CPU/RSS or accuracy. Best Effort live transport can also
+lose messages before the callback, independently of the image buffer.
+
+Build tests with `-DBUILD_TESTING=ON` and run `ctest --test-dir <build/sa_livo>`.
+The optional burst/backpressure regression uses a short compatible raw-image
+ROS2 bag (for example, five seconds of Bright_Screen_Wall):
+
+```bash
+python3 sa_livo/tests/replay_backpressure_test.py \
+  --binary /absolute/path/to/fastlivo_mapping \
+  --params sa_livo/config/avia.yaml --camera sa_livo/config/camera_pinhole.yaml \
+  --bag /absolute/path/to/short_ros2_bag --output /tmp/sa_livo_backpressure
+```
 
 ## Run & evaluate
 

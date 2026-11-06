@@ -6,11 +6,13 @@
 #include <Eigen/Eigenvalues>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <unordered_map>
+#include <vector>
 
 struct AdaptiveVoxelKey
 {
@@ -104,6 +106,21 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Map = std::unordered_map<AdaptiveVoxelKey, AdaptiveVoxelCell, AdaptiveVoxelKeyHash>;
 
+  struct PlaneSupport
+  {
+    AdaptivePlaneFit fit;
+    Eigen::Matrix3d mean_map_covariance = Eigen::Matrix3d::Zero();
+  };
+
+  // One workspace per querying thread. Geometry depends on the query voxel
+  // and the map revision; lateral/innovation gates still depend on each point.
+  // Workspaces are invalidated automatically after a map mutation.
+  struct QueryCache
+  {
+    std::uint64_t revision = 0;
+    std::unordered_map<AdaptiveVoxelKey, PlaneSupport, AdaptiveVoxelKeyHash> supports;
+  };
+
   explicit AdaptiveVoxelGrid(const AdaptiveVoxelConfig &config) : config_(config)
   {
     if (!(config_.voxel_size > 0.0) || !std::isfinite(config_.voxel_size) ||
@@ -136,35 +153,61 @@ public:
   void addPoint(const Eigen::Vector3d &point,
                 const Eigen::Matrix3d &full_covariance = Eigen::Matrix3d::Zero())
   {
-    cells_[keyOf(point)].add(point, full_covariance, config_.n_cap);
+    auto &cell = cells_[keyOf(point)];
+    if (cell.n >= config_.n_cap) return;
+    cell.add(point, full_covariance, config_.n_cap);
+    revision_ = nextRevision();
   }
 
   bool queryPlane(const Eigen::Vector3d &query,
                   const Eigen::Matrix3d &full_world_covariance,
-                  AdaptivePlaneFit &result) const
+                  AdaptivePlaneFit &result, QueryCache *cache = nullptr) const
   {
     result = AdaptivePlaneFit();
     const AdaptiveVoxelKey center_key = keyOf(query);
+    if (cache)
+    {
+      if (cache->revision != revision_)
+      {
+        cache->supports.clear();
+        cache->revision = revision_;
+      }
+      auto it = cache->supports.find(center_key);
+      if (it == cache->supports.end())
+      {
+        PlaneSupport support;
+        fitSupport(center_key, support);
+        it = cache->supports.emplace(center_key, std::move(support)).first;
+      }
+      return associate(query, full_world_covariance, it->second, result);
+    }
+    PlaneSupport support;
+    fitSupport(center_key, support);
+    return associate(query, full_world_covariance, support, result);
+  }
+
+private:
+  void fitSupport(const AdaptiveVoxelKey &center_key, PlaneSupport &support) const
+  {
     Eigen::Vector3d s1 = Eigen::Vector3d::Zero();
     Eigen::Matrix3d S2 = Eigen::Matrix3d::Zero();
     Eigen::Matrix3d cov_sum = Eigen::Matrix3d::Zero();
-    std::vector<Eigen::Matrix3d> cov_obs;
-    std::vector<Eigen::Vector3d> points_obs;
+    std::vector<const AdaptiveVoxelCell *> support_cells;
     std::uint32_t n = 0;
 
     for (int shell = 0; shell <= max_shell_; ++shell)
     {
-      addShell(center_key, shell, s1, S2, cov_sum, cov_obs, points_obs, n);
+      addShell(center_key, shell, s1, S2, cov_sum, support_cells, n);
       if (n < config_.n_pca) continue;
 
       const Eigen::Vector3d center = s1 / static_cast<double>(n);
       Eigen::Matrix3d covariance = S2 / static_cast<double>(n) - center * center.transpose();
       covariance = 0.5 * (covariance + covariance.transpose());
-      if (!center.allFinite() || !covariance.allFinite()) return false;
+      if (!center.allFinite() || !covariance.allFinite()) return;
       Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance);
-      if (solver.info() != Eigen::Success) return false;
+      if (solver.info() != Eigen::Success) return;
       const Eigen::Vector3d eigenvalues = solver.eigenvalues();
-      if (!eigenvalues.allFinite()) return false;
+      if (!eigenvalues.allFinite()) return;
       const double trace = eigenvalues.sum();
       const double kappa = trace > 1e-12 ? std::max(eigenvalues[0], 0.0) / trace : 1.0 / 3.0;
       // Eq. 9: dual planarity test (scale-invariant ratio + absolute guard)
@@ -182,14 +225,11 @@ public:
       candidate.shell = shell;
       candidate.d = -candidate.normal.dot(candidate.center);
 
-      const Eigen::Vector3d offset = query - candidate.center;
-      const Eigen::Vector3d lateral = offset - candidate.normal * candidate.normal.dot(offset);
-      if (lateral.norm() > 3.0 * candidate.radius) return false;
-
       // Eq. 13/14: first-order eigenvector perturbation plane covariance.
       candidate.covariance.setZero();
       const int min_idx = 0;  // SelfAdjointEigenSolver returns ascending λ
-      for (std::size_t i = 0; i < cov_obs.size(); ++i)
+      for (const auto *cell : support_cells)
+      for (std::size_t i = 0; i < cell->covariance_obs.size(); ++i)
       {
         Eigen::Matrix<double, 6, 3> Ji;
         Eigen::Matrix3d F = Eigen::Matrix3d::Zero();
@@ -201,36 +241,45 @@ public:
           if (std::fabs(denom) < 1e-12) continue;
           const Eigen::Vector3d vm = solver.eigenvectors().col(m);
           const Eigen::Vector3d vmin = solver.eigenvectors().col(min_idx);
-          F.row(m) = ((points_obs[i] - center).transpose() / denom) *
+          F.row(m) = ((cell->points_obs[i] - center).transpose() / denom) *
                      (vm * vmin.transpose() + vmin * vm.transpose());
         }
         Ji.block<3, 3>(0, 0) = solver.eigenvectors() * F;
         Ji.block<3, 3>(3, 0) = Eigen::Matrix3d::Identity() / static_cast<double>(n);
-        candidate.covariance += Ji * cov_obs[i] * Ji.transpose();
-      }
-      Eigen::Matrix<double, 1, 6> Jnq;
-      Jnq.block<1, 3>(0, 0) = offset.transpose();
-      Jnq.block<1, 3>(0, 3) = -candidate.normal.transpose();
-      candidate.residual = candidate.normal.dot(offset);
-      candidate.residual_variance = config_.epsilon0 +
-          (Jnq * candidate.covariance * Jnq.transpose()).value() +
-          (candidate.normal.transpose() *
-           (config_.use_map_covariance && n > 0
-                ? cov_sum / static_cast<double>(n)
-                : full_world_covariance) *
-           candidate.normal).value();
-      if (!(candidate.residual_variance > 0.0) ||
-          candidate.residual * candidate.residual >
-              config_.association_chi2 * candidate.residual_variance)
-      {
-        return false;
+        candidate.covariance += Ji * cell->covariance_obs[i] * Ji.transpose();
       }
       candidate.valid = true;
-      result = candidate;
-      return true;  // v2: accept the first certifiably planar support scale.
+      support.fit = candidate;
+      support.mean_map_covariance = cov_sum / static_cast<double>(n);
+      return;  // v2: retain the first certifiably planar support scale.
     }
-    return false;
   }
+
+  bool associate(const Eigen::Vector3d &query, const Eigen::Matrix3d &world_covariance,
+                 const PlaneSupport &support, AdaptivePlaneFit &result) const
+  {
+    if (!support.fit.valid) return false;
+    AdaptivePlaneFit candidate = support.fit;
+    const Eigen::Vector3d offset = query - candidate.center;
+    const Eigen::Vector3d lateral = offset - candidate.normal * candidate.normal.dot(offset);
+    if (lateral.norm() > 3.0 * candidate.radius) return false;
+    Eigen::Matrix<double, 1, 6> Jnq;
+    Jnq.block<1, 3>(0, 0) = offset.transpose();
+    Jnq.block<1, 3>(0, 3) = -candidate.normal.transpose();
+    candidate.residual = candidate.normal.dot(offset);
+    candidate.residual_variance = config_.epsilon0 +
+        (Jnq * candidate.covariance * Jnq.transpose()).value() +
+        (candidate.normal.transpose() *
+         (config_.use_map_covariance ? support.mean_map_covariance : world_covariance) *
+         candidate.normal).value();
+    if (!(candidate.residual_variance > 0.0) ||
+        candidate.residual * candidate.residual > config_.association_chi2 * candidate.residual_variance)
+      return false;
+    result = candidate;
+    return true;
+  }
+
+public:
 
   const AdaptiveVoxelCell *findCell(const AdaptiveVoxelKey &key) const
   {
@@ -239,7 +288,7 @@ public:
   }
 
   std::size_t size() const { return cells_.size(); }
-  void clear() { cells_.clear(); }
+  void clear() { cells_.clear(); revision_ = nextRevision(); }
   std::size_t eraseOutside(const AdaptiveVoxelKey &minimum, const AdaptiveVoxelKey &maximum)
   {
     std::size_t erased = 0;
@@ -254,18 +303,17 @@ public:
       }
       else ++it;
     }
+    if (erased) revision_ = nextRevision();
     return erased;
   }
   int maxShell() const { return max_shell_; }
   const Map &cells() const { return cells_; }
-  Map &cells() { return cells_; }
 
 private:
   void addShell(const AdaptiveVoxelKey &center, int shell,
                 Eigen::Vector3d &s1, Eigen::Matrix3d &S2,
                 Eigen::Matrix3d &cov_sum,
-                std::vector<Eigen::Matrix3d> &cov_obs,
-                std::vector<Eigen::Vector3d> &points_obs,
+                std::vector<const AdaptiveVoxelCell *> &support_cells,
                 std::uint32_t &n) const
   {
     for (int dx = -shell; dx <= shell; ++dx)
@@ -279,10 +327,9 @@ private:
           s1 += it->second.s1;
           S2 += it->second.S2;
           cov_sum += it->second.covariance_sum;
-          cov_obs.insert(cov_obs.end(), it->second.covariance_obs.begin(),
-                         it->second.covariance_obs.end());
-          points_obs.insert(points_obs.end(), it->second.points_obs.begin(),
-                            it->second.points_obs.end());
+          // Preserve cell/point order without copying every observation at
+          // every query scale. The map is read-only during association.
+          support_cells.push_back(&it->second);
           n += it->second.n;
         }
   }
@@ -290,4 +337,10 @@ private:
   AdaptiveVoxelConfig config_;
   int max_shell_ = 1;
   Map cells_;
+  static std::uint64_t nextRevision()
+  {
+    static std::atomic<std::uint64_t> sequence{0};
+    return sequence.fetch_add(1, std::memory_order_relaxed) + 1;
+  }
+  std::uint64_t revision_ = nextRevision();
 };

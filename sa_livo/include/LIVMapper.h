@@ -209,7 +209,9 @@ public:
   bool img_compressed_en = false;   // Oxford Spires bags publish CompressedImage
   double img_rate_hz = 0.0;         // 0=off; >0 keeps one image per 1/rate s (paper: 10 Hz)
   double last_img_kept_time_ = -1.0;
-  int img_buffer_max = 60;          // bounded backlog (feeder backpressure); 0=unbounded
+  int img_buffer_max = 60;          // direct feeder backpressure / live oldest-frame eviction; 0=unbounded
+  std::uint64_t dropped_live_images_ = 0;
+  std::size_t peak_image_buffer_ = 0;
   rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr sub_img_comp;
   deque<PointCloudXYZI::Ptr> lid_raw_data_buffer;
   deque<double> lid_header_time_buffer;

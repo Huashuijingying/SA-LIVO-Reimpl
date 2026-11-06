@@ -4,6 +4,8 @@ install/
 log/
 *.o
 *.so
+__pycache__/
+*.py[cod]
 
 # Large media / datasets
 *.bag

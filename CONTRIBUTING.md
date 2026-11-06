@@ -10,9 +10,12 @@ reproducible, evidence-backed changes.
 - For bugs, include: the sequence, the exact configuration (params file and
   overrides), the command used, the estimated trajectory pose count, and the
   official evaluator output.
-- For performance claims, provide the reproducible command and the evaluator
-  output; numbers are accepted only when produced by a deterministic replay
-  and verified with the official evaluators.
+- For trajectory accuracy claims, provide deterministic replay commands and
+  official evaluator output. For CPU/RSS claims, report hardware, build flags,
+  thread settings, playback/queue policy, process samples, complete input
+  counts, output pose count and final timestamp. Exclude stalled or incomplete
+  runs from equal-workload comparisons; resource measurements alone do not
+  establish trajectory accuracy.
 
 ## Submitting code
 

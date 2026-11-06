@@ -466,7 +466,8 @@ public:
   // Chebyshev shells with O(1) multi-scale PCA from sufficient statistics.
   // Outputs the winning plane into ptpl (or leaves is_sucess = false).
   void build_single_residual_sa(pointWithVar &pv, bool &is_sucess, PointToPlane &single_ptpl);
-  void build_single_residual_v2(pointWithVar &pv, bool &is_success, PointToPlane &single_ptpl);
+  void build_single_residual_v2(pointWithVar &pv, bool &is_success, PointToPlane &single_ptpl,
+                               AdaptiveVoxelGrid::QueryCache *query_cache = nullptr);
 
   void pubVoxelMap();
 

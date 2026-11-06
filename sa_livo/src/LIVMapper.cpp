@@ -1463,11 +1463,10 @@ void LIVMapper::savePCD()
 
 void LIVMapper::run(rclcpp::Node::SharedPtr &node) 
 {
-  rclcpp::Rate rate(5000);
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(this->node);
   std::thread direct_feeder;
-  int tail_sync_fail = 0;
+  std::chrono::steady_clock::time_point tail_stalled_since{};
   if (!direct_bag_path_.empty())
   {
     RCLCPP_INFO(this->node->get_logger(), "[ DIRECT BAG ] in-process replay: %s", direct_bag_path_.c_str());
@@ -1496,15 +1495,25 @@ void LIVMapper::run(rclcpp::Node::SharedPtr &node)
         // Feeder done but both streams still have data that cannot be paired
         // (e.g. trailing camera frames ahead of the last LiDAR scan). Give the
         // sync a short window, then finalise so PCD saving is not blocked.
-        if (++tail_sync_fail >= 10000) break;  // ~2 s at 5000 Hz
+        const auto now = std::chrono::steady_clock::now();
+        if (tail_stalled_since == std::chrono::steady_clock::time_point{}) tail_stalled_since = now;
+        if (now - tail_stalled_since >= std::chrono::seconds(2)) break;
       }
       else
       {
-        tail_sync_fail = 0;
+        tail_stalled_since = {};
       }
-      rate.sleep();
+      if (direct_bag_path_.empty())
+        executor.spin_once(std::chrono::milliseconds(5));
+      else
+      {
+        std::unique_lock<std::mutex> lock(mtx_buffer);
+        sig_buffer.wait_for(lock, std::chrono::milliseconds(5));
+      }
       continue;
     }
+    tail_stalled_since = {};
+    sig_buffer.notify_all();  // a direct feeder may be waiting for image space
     handleFirstFrame();
 
     if (slam_mode_ == LIVO && LidarMeasures.lio_vio_flg == VIO)
@@ -1524,6 +1533,8 @@ void LIVMapper::run(rclcpp::Node::SharedPtr &node)
   }
   if (direct_feeder.joinable()) direct_feeder.join();
   executor.remove_node(this->node);
+  RCLCPP_INFO(this->node->get_logger(), "[ PIPELINE FINAL ] live_image_drops=%llu peak_image_buffer=%zu",
+              static_cast<unsigned long long>(dropped_live_images_), peak_image_buffer_);
   savePCD();
 }
 
@@ -1538,6 +1549,20 @@ void LIVMapper::feedDirectBag()
   co.output_serialization_format = rmw_get_serialization_format();
   reader.open(so, co);
   size_t n_imu = 0, n_lid = 0, n_img = 0;
+  const auto wait_for_image_space = [this]() {
+    // Only this independent producer may wait for the processing thread.
+    // Waiting inside a ROS callback blocks the SingleThreadedExecutor and
+    // prevents the same run loop from consuming the full image buffer.
+    while (img_buffer_max > 0 && rclcpp::ok())
+    {
+      std::unique_lock<std::mutex> lock(mtx_buffer);
+      sig_buffer.wait_for(lock, std::chrono::milliseconds(5), [this]() {
+        return !rclcpp::ok() || img_buffer.size() < static_cast<size_t>(img_buffer_max);
+      });
+      if (img_buffer.size() < static_cast<size_t>(img_buffer_max)) break;
+    }
+    return rclcpp::ok();
+  };
   while (rclcpp::ok() && reader.has_next())
   {
     auto m = reader.read_next();
@@ -1569,6 +1594,7 @@ void LIVMapper::feedDirectBag()
     }
     else if (m->topic_name == img_topic && img_en && img_compressed_en)
     {
+      if (!wait_for_image_space()) break;
       rclcpp::SerializedMessage sm(*m->serialized_data);
       auto msg = std::make_shared<sensor_msgs::msg::CompressedImage>();
       rclcpp::Serialization<sensor_msgs::msg::CompressedImage>().deserialize_message(&sm, msg.get());
@@ -1577,6 +1603,7 @@ void LIVMapper::feedDirectBag()
     }
     else if (m->topic_name == img_topic && img_en)
     {
+      if (!wait_for_image_space()) break;
       rclcpp::SerializedMessage sm(*m->serialized_data);
       auto msg = std::make_shared<sensor_msgs::msg::Image>();
       rclcpp::Serialization<sensor_msgs::msg::Image>().deserialize_message(&sm, msg.get());
@@ -2149,7 +2176,7 @@ void LIVMapper::img_compressed_cbk(const sensor_msgs::msg::CompressedImage::Cons
 void LIVMapper::img_cbk(const sensor_msgs::msg::Image::ConstSharedPtr &msg_in)
 {
   if (!img_en) return;
-  sensor_msgs::msg::Image::SharedPtr msg(new sensor_msgs::msg::Image(*msg_in));
+  const auto &msg = msg_in;
   // if ((abs(stamp2Sec(msg->header.stamp) - last_timestamp_img) > 0.2 && last_timestamp_img > 0) || sync_jump_flag)
   // {
   //   RCLCPP_WARN(this->node->get_logger(), "img jumps %.3f\n", stamp2Sec(msg->header.stamp) - last_timestamp_img);
@@ -2192,22 +2219,26 @@ void LIVMapper::img_cbk(const sensor_msgs::msg::Image::ConstSharedPtr &msg_in)
     last_img_kept_time_ = msg_header_time;
   }
 
-  // Bounded backlog: in-process bag replay can decode frames much faster than
-  // the joint update consumes them (1440x1080 Spires images ~5 MB each).  Keep
-  // the feeder within img_buffer_max of the pipeline so memory stays bounded;
-  // message order/content is unchanged, so replay remains deterministic.
-  while (img_buffer_max > 0 && rclcpp::ok())
-  {
-    size_t n = 0;
-    {
-      std::lock_guard<std::mutex> lk(mtx_buffer);
-      n = img_buffer.size();
-    }
-    if (n < static_cast<size_t>(img_buffer_max)) break;
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  }
-
   mtx_buffer.lock();
+
+  // Live callbacks must return even when the consumer is overloaded. Keep
+  // recent images and remove timestamps together with their image. The direct
+  // bag reader applies lossless backpressure before invoking this callback.
+  if (direct_bag_path_.empty() && img_buffer_max > 0)
+  {
+    const auto previous_drops = dropped_live_images_;
+    while (img_buffer.size() >= static_cast<size_t>(img_buffer_max))
+    {
+      img_buffer.pop_front();
+      img_time_buffer.pop_front();
+      ++dropped_live_images_;
+    }
+    if (dropped_live_images_ != previous_drops)
+      RCLCPP_WARN_THROTTLE(this->node->get_logger(), *this->node->get_clock(), 5000,
+                          "Image buffer limit %d reached: dropped %llu oldest live images; "
+                          "use direct_bag_path for bounded lossless offline replay",
+                          img_buffer_max, static_cast<unsigned long long>(dropped_live_images_));
+  }
 
   double img_time_correct = msg_header_time; // last_timestamp_lidar + 0.105;
 
@@ -2223,6 +2254,7 @@ void LIVMapper::img_cbk(const sensor_msgs::msg::Image::ConstSharedPtr &msg_in)
   img_cur = img_cur.clone();
   img_buffer.push_back(img_cur);
   img_time_buffer.push_back(img_time_correct);
+  peak_image_buffer_ = std::max(peak_image_buffer_, img_buffer.size());
 
   // ROS_INFO("Correct Image time: %.6f", img_time_correct);
 
